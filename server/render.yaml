@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: jobpulse-api
+    env: node
+    region: singapore  # closest to India
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false          # Set this in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure value
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: RESEND_API_KEY
+        sync: false          # Set this in Render dashboard
+      - key: FROM_EMAIL
+        sync: false          # e.g. JobPulse <noreply@yourdomain.com>
+      - key: CRON_SCHEDULE
+        value: "0 9 * * *"
+      - key: CLIENT_URL
+        sync: false          # e.g. https://jobpulse.vercel.app

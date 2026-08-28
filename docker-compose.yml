@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:6.0
+    container_name: jobpulse_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - jobpulse_network
+
+  # Backend REST API
+  api:
+    build: ./server
+    container_name: jobpulse_api
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/jobpulse
+      - JWT_SECRET=change_me_to_something_secure_in_production
+      - CLIENT_URL=http://localhost:8080
+      - NODE_ENV=production
+      - CRON_SCHEDULE=0 9 * * *
+    depends_on:
+      - mongodb
+    networks:
+      - jobpulse_network
+
+  # Frontend Nginx host
+  client:
+    build: ./client
+    container_name: jobpulse_client
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - jobpulse_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  jobpulse_network:
+    driver: bridge

@@ -1,0 +1,60 @@
+name: JobPulse CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-server:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'server/package-lock.json'
+
+    - name: Install backend dependencies
+      run: |
+        cd server
+        npm ci
+
+    - name: Run server test suite
+      run: |
+        cd server
+        npm test
+      env:
+        JWT_SECRET: test_jwt_secret_github_actions_ci
+
+  lint-client:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        cache-dependency-path: 'client/package-lock.json'
+
+    - name: Install frontend dependencies
+      run: |
+        cd client
+        npm ci
+
+    - name: Verify production build compilation
+      run: |
+        cd client
+        npm run build
