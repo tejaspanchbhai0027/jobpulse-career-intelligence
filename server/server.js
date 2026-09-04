@@ -1,4 +1,12 @@
 require('dotenv').config();
+
+const requiredEnvs = ['MONGO_URI', 'JWT_SECRET', 'RESEND_API_KEY', 'GEMINI_API_KEY'];
+const missingEnvs = requiredEnvs.filter(env => !process.env[env]);
+if (missingEnvs.length > 0) {
+  console.error(`❌ FATAL ERROR: Missing required environment variables: ${missingEnvs.join(', ')}`);
+  process.exit(1);
+}
+
 const express     = require('express');
 const cors        = require('cors');
 const helmet        = require('helmet');
@@ -15,8 +23,22 @@ const nudgeRoutes           = require('./src/routes/nudgeRoutes');
 const dashboardRoutes       = require('./src/routes/dashboardRoutes');
 const interviewRoutes       = require('./src/routes/interviewRoutes');
 const aiRoutes              = require('./src/routes/aiRoutes');
+
 const intelligenceRoutes    = require('./src/routes/intelligenceRoutes');
+const resumeRoutes          = require('./src/routes/resumeRoutes');
 const experimentRoutes      = require('./src/routes/experimentRoutes');
+const institutionRoutes     = require('./src/routes/institutionRoutes');
+const superAdminRoutes      = require('./src/routes/superAdminRoutes');
+const adminDashboardRoutes  = require('./src/routes/adminDashboardRoutes');
+const adminStudentRoutes    = require('./src/routes/adminStudentRoutes');
+const adminIntelligenceRoutes = require('./src/routes/adminIntelligenceRoutes');
+const adminInterventionRoutes = require('./src/routes/adminInterventionRoutes');
+const adminEmployerRoutes     = require('./src/routes/adminEmployerRoutes');
+const adminAnalyticsRoutes    = require('./src/routes/adminAnalyticsRoutes');
+const adminOfficerRoutes      = require('./src/routes/adminOfficerRoutes');
+const adminMentorRoutes       = require('./src/routes/adminMentorRoutes');
+const mentorRoutes            = require('./src/routes/mentorRoutes');
+const officerRoutes           = require('./src/routes/officerRoutes');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 const { startFollowUpCron } = require('./src/jobs/followUpJob');
 
@@ -88,8 +110,22 @@ app.use('/api/nudge',         nudgeRoutes);
 app.use('/api/dashboard',     dashboardRoutes);
 app.use('/api/interviews',    interviewRoutes);
 app.use('/api/ai',            aiRoutes);
+
 app.use('/api/intelligence',  intelligenceRoutes);
+app.use('/api/resumes',       resumeRoutes);
 app.use('/api/experiments',   experimentRoutes);
+app.use('/api/institution',   institutionRoutes);
+app.use('/api/super-admin',   superAdminRoutes);
+app.use('/api/admin/dashboard', adminDashboardRoutes);
+app.use('/api/admin/students',  adminStudentRoutes);
+app.use('/api/admin/intelligence',  adminIntelligenceRoutes);
+app.use('/api/admin/interventions', adminInterventionRoutes);
+app.use('/api/admin/employers',     adminEmployerRoutes);
+app.use('/api/admin/analytics',     adminAnalyticsRoutes);
+app.use('/api/admin/officers',      adminOfficerRoutes);
+app.use('/api/admin/mentors',       adminMentorRoutes);
+app.use('/api/mentor',              mentorRoutes);
+app.use('/api/officer',             officerRoutes);
 
 // ── Error Handling ────────────────────────────────────────────────────────────
 app.use(notFound);
@@ -100,3 +136,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀  JobPulse server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
 });
+ 

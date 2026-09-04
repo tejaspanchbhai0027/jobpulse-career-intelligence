@@ -10,6 +10,7 @@ const express = require('express');
 const buildTestApp = () => {
   const app = express();
   app.use(express.json({ limit: '50kb' }));
+  app.use(require('cookie-parser')());
 
   app.use('/api/auth',         require('../src/routes/authRoutes'));
   app.use('/api/applications', require('../src/routes/applicationRoutes'));
@@ -49,7 +50,7 @@ const registerAndLogin = async (overrides = {}) => {
   const user = { name: 'Test User', email: 'test@example.com', password: 'password123', ...overrides };
   await request(app).post('/api/auth/register').send(user);
   const res = await request(app).post('/api/auth/login').send({ email: user.email, password: user.password });
-  return { token: res.body.token, user: res.body.user };
+  return { cookie: res.headers['set-cookie'], user: res.body.user };
 };
 
 // ── Health Check ───────────────────────────────────────────────────────────────
@@ -69,7 +70,6 @@ describe('POST /api/auth/register', () => {
     });
     expect(res.statusCode).toBe(201);
     expect(res.body.success).toBe(true);
-    expect(res.body.token).toBeDefined();
     expect(res.body.user.email).toBe('alice@example.com');
   });
 
@@ -103,7 +103,7 @@ describe('POST /api/auth/login', () => {
     await request(app).post('/api/auth/register').send({ name: 'Alice', email: 'alice@example.com', password: 'password123' });
     const res = await request(app).post('/api/auth/login').send({ email: 'alice@example.com', password: 'password123' });
     expect(res.statusCode).toBe(200);
-    expect(res.body.token).toBeDefined();
+    expect(res.headers['set-cookie']).toBeDefined();
   });
 
   it('rejects wrong password', async () => {
@@ -120,9 +120,9 @@ describe('POST /api/auth/login', () => {
 });
 
 describe('GET /api/auth/me', () => {
-  it('returns user profile with valid token', async () => {
-    const { token } = await registerAndLogin();
-    const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+  it('returns user profile with valid cookie', async () => {
+    const { cookie } = await registerAndLogin();
+    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
     expect(res.statusCode).toBe(200);
     expect(res.body.user.email).toBe('test@example.com');
   });
@@ -135,15 +135,15 @@ describe('GET /api/auth/me', () => {
 
 // ── Application Routes ─────────────────────────────────────────────────────────
 describe('Application CRUD', () => {
-  let token;
+  let cookie;
   beforeEach(async () => {
-    ({ token } = await registerAndLogin());
+    ({ cookie } = await registerAndLogin());
   });
 
   it('creates an application with required fields', async () => {
     const res = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Google', role: 'SWE Intern' });
     expect(res.statusCode).toBe(201);
     expect(res.body.data.company).toBe('Google');
@@ -154,7 +154,7 @@ describe('Application CRUD', () => {
   it('rejects application without company', async () => {
     const res = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ role: 'SWE Intern' });
     expect(res.statusCode).toBe(400);
     expect(res.body.errors.some(e => e.field === 'company')).toBe(true);
@@ -163,17 +163,17 @@ describe('Application CRUD', () => {
   it('rejects unknown fields (strict mode)', async () => {
     const res = await request(app)
       .put('/api/applications/000000000000000000000000')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Test', unknownHackField: 'injection' });
     expect(res.statusCode).toBe(400);
     expect(res.body.success).toBe(false);
   });
 
   it('lists only the authenticated user applications', async () => {
-    await request(app).post('/api/applications').set('Authorization', `Bearer ${token}`).send({ company: 'Apple', role: 'Designer' });
-    await request(app).post('/api/applications').set('Authorization', `Bearer ${token}`).send({ company: 'Meta', role: 'PM' });
+    await request(app).post('/api/applications').set('Cookie', cookie).send({ company: 'Apple', role: 'Designer' });
+    await request(app).post('/api/applications').set('Cookie', cookie).send({ company: 'Meta', role: 'PM' });
 
-    const res = await request(app).get('/api/applications').set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/applications').set('Cookie', cookie);
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toHaveLength(2);
   });
@@ -181,13 +181,13 @@ describe('Application CRUD', () => {
   it('updates an application', async () => {
     const created = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Netflix', role: 'Engineer' });
 
     const id = created.body.data._id;
     const res = await request(app)
       .put(`/api/applications/${id}`)
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ status: 'Interview' });
 
     expect(res.statusCode).toBe(200);
@@ -197,39 +197,39 @@ describe('Application CRUD', () => {
   it('deletes an application', async () => {
     const created = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Amazon', role: 'SDE' });
     const id = created.body.data._id;
 
-    const res = await request(app).delete(`/api/applications/${id}`).set('Authorization', `Bearer ${token}`);
+    const res = await request(app).delete(`/api/applications/${id}`).set('Cookie', cookie);
     expect(res.statusCode).toBe(200);
 
-    const check = await request(app).get('/api/applications').set('Authorization', `Bearer ${token}`);
+    const check = await request(app).get('/api/applications').set('Cookie', cookie);
     expect(check.body.data).toHaveLength(0);
   });
 
   it('cannot access another users application', async () => {
     const created = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Stripe', role: 'Eng' });
     const id = created.body.data._id;
 
     // Register a second user
-    const { token: token2 } = await registerAndLogin({ name: 'Other', email: 'other@example.com', password: 'password123' });
-    const res = await request(app).delete(`/api/applications/${id}`).set('Authorization', `Bearer ${token2}`);
+    const { cookie: cookie2 } = await registerAndLogin({ name: 'Other', email: 'other@example.com', password: 'password123' });
+    const res = await request(app).delete(`/api/applications/${id}`).set('Cookie', cookie2);
     expect(res.statusCode).toBe(404);
   });
 });
 
 // ── Interview Routes ───────────────────────────────────────────────────────────
 describe('Interview CRUD', () => {
-  let token, appId;
+  let cookie, appId;
   beforeEach(async () => {
-    ({ token } = await registerAndLogin());
+    ({ cookie } = await registerAndLogin());
     const app2 = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Airbnb', role: 'SWE' });
     appId = app2.body.data._id;
   });
@@ -237,7 +237,7 @@ describe('Interview CRUD', () => {
   it('creates an interview for an application', async () => {
     const res = await request(app)
       .post('/api/interviews')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ applicationId: appId, scheduledAt: new Date(Date.now() + 86400000).toISOString(), interviewType: 'Video', round: 1 });
     expect(res.statusCode).toBe(201);
     expect(res.body.data.interviewType).toBe('Video');
@@ -246,10 +246,10 @@ describe('Interview CRUD', () => {
   it('auto-advances application to Interview status', async () => {
     await request(app)
       .post('/api/interviews')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ applicationId: appId, scheduledAt: new Date(Date.now() + 86400000).toISOString(), interviewType: 'Phone', round: 1 });
 
-    const appRes = await request(app).get('/api/applications').set('Authorization', `Bearer ${token}`);
+    const appRes = await request(app).get('/api/applications').set('Cookie', cookie);
     const updatedApp = appRes.body.data.find(a => a._id === appId);
     expect(updatedApp.status).toBe('Interview');
   });
@@ -257,10 +257,10 @@ describe('Interview CRUD', () => {
   it('gets upcoming interviews', async () => {
     await request(app)
       .post('/api/interviews')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ applicationId: appId, scheduledAt: new Date(Date.now() + 2 * 86400000).toISOString(), round: 1 });
 
-    const res = await request(app).get('/api/interviews/upcoming').set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/interviews/upcoming').set('Cookie', cookie);
     expect(res.statusCode).toBe(200);
     expect(res.body.data.length).toBeGreaterThan(0);
   });
@@ -268,7 +268,7 @@ describe('Interview CRUD', () => {
   it('rejects interview creation without scheduledAt', async () => {
     const res = await request(app)
       .post('/api/interviews')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ applicationId: appId, round: 1 });
     expect(res.statusCode).toBe(400);
   });
@@ -276,15 +276,15 @@ describe('Interview CRUD', () => {
 
 // ── Zod Validation Edge Cases ──────────────────────────────────────────────────
 describe('Zod Validation', () => {
-  let token;
+  let cookie;
   beforeEach(async () => {
-    ({ token } = await registerAndLogin());
+    ({ cookie } = await registerAndLogin());
   });
 
   it('rejects invalid status enum', async () => {
     const res = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Test', role: 'Dev', status: 'InvalidStatus' });
     expect(res.statusCode).toBe(400);
     expect(res.body.errors.some(e => e.field === 'status')).toBe(true);
@@ -293,7 +293,7 @@ describe('Zod Validation', () => {
   it('rejects invalid job URL', async () => {
     const res = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Test', role: 'Dev', jobUrl: 'not-a-url' });
     expect(res.statusCode).toBe(400);
     expect(res.body.errors.some(e => e.field === 'jobUrl')).toBe(true);
@@ -302,7 +302,7 @@ describe('Zod Validation', () => {
   it('accepts empty string for jobUrl', async () => {
     const res = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Test', role: 'Dev', jobUrl: '' });
     expect(res.statusCode).toBe(201);
   });
@@ -310,7 +310,7 @@ describe('Zod Validation', () => {
   it('coerces dateApplied from string to Date', async () => {
     const res = await request(app)
       .post('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', cookie)
       .send({ company: 'Test', role: 'Dev', dateApplied: '2024-01-15' });
     expect(res.statusCode).toBe(201);
     expect(res.body.data.dateApplied).toBeDefined();

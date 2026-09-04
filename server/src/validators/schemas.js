@@ -21,6 +21,9 @@ const registerSchema = z.object({
     .string({ required_error: 'Password is required' })
     .min(6, 'Password must be at least 6 characters')
     .max(128, 'Password is too long'),
+  institutionId: z.string().optional().nullable(),
+  placementOfficerId: z.string().optional().nullable(),
+  mentorId: z.string().optional().nullable(),
 });
 
 const loginSchema = z.object({
@@ -33,7 +36,7 @@ const loginSchema = z.object({
 });
 
 const updateSettingsSchema = z.object({
-  followUpWindowDays: z
+  followUpWindowDays: z.coerce
     .number({ invalid_type_error: 'followUpWindowDays must be a number' })
     .int('followUpWindowDays must be a whole number')
     .min(1, 'Must be at least 1 day')
@@ -48,6 +51,24 @@ const updateSettingsSchema = z.object({
     name: z.string().min(1).max(50),
     state: z.any()
   })).optional(),
+  name:               z.string().trim().min(1).max(60).optional(),
+  phone:              z.string().trim().optional(),
+  location:           z.string().trim().optional(),
+  preferredLocations: z.array(z.string()).optional(),
+  linkedinUrl:        z.string().trim().optional(), // Could add URL validation, keeping it loose for now
+  githubUrl:          z.string().trim().optional(),
+  portfolioUrl:       z.string().trim().optional(),
+  targetRoles:        z.array(z.string()).optional(),
+  targetSalary:       z.string().optional(),
+  employmentTypes:    z.array(z.string()).optional(),
+  workPreference:     z.string().optional(),
+  professionalBio:    z.string().max(1000).optional(),
+  intelligenceSettings: z.object({
+    careerIntelligence: z.boolean().optional(),
+    copilot: z.boolean().optional(),
+    strategyRecommendations: z.boolean().optional(),
+    weeklyStrategySummary: z.boolean().optional(),
+  }).optional(),
 });
 
 // ── Application schemas ─────────────────────────────────────────────────────

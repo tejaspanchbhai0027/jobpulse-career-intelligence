@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRole } = require('../middleware/authMiddleware');
 const { 
   getExperiments, 
   getExperiment, 
@@ -10,6 +10,7 @@ const {
 } = require('../controllers/experimentController');
 
 router.use(protect);
+router.use(requireRole('STUDENT'));
 
 router.route('/')
   .get(getExperiments)

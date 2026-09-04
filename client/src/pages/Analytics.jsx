@@ -7,24 +7,23 @@ import {
 } from 'recharts'
 import useDashboardStats from '../hooks/useDashboardStats'
 
-// ── Color palette (matches design system) ──────────────────────────────────────
 const STATUS_COLORS = {
-  Wishlist:   '#6366f1',
-  Applied:    '#06b6d4',
-  Assessment: '#f59e0b',
-  Interview:  '#8b5cf6',
-  Offer:      '#10b981',
-  Rejected:   '#ef4444',
+  Wishlist:   'var(--color-wishlist)',
+  Applied:    'var(--color-applied)',
+  Assessment: 'var(--color-assessment)',
+  Interview:  'var(--color-interview)',
+  Offer:      'var(--color-offer)',
+  Rejected:   'var(--color-rejected)',
 }
 
 const CHART_COLORS = Object.values(STATUS_COLORS)
 
 // ── Shared tooltip style ───────────────────────────────────────────────────────
 const tooltipStyle = {
-  background: 'rgba(17,17,34,0.92)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'var(--color-surface-raised)',
+  border: '1px solid var(--color-border)',
   borderRadius: '10px',
-  color: '#e2e8f0',
+  color: 'var(--color-text-primary)',
   fontSize: '0.8rem',
   boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
 }
@@ -120,7 +119,7 @@ const CustomPieTooltip = ({ active, payload }) => {
 const Skeleton = ({ height = '180px', style = {} }) => (
   <div style={{
     height, borderRadius: '12px',
-    background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%)',
+    background: 'linear-gradient(90deg, var(--color-chart-grid) 25%, var(--color-border-subtle) 50%, var(--color-chart-grid) 75%)',
     backgroundSize: '200% 100%',
     animation: 'shimmer 1.4s infinite',
     ...style,
@@ -215,20 +214,20 @@ const Analytics = ({ onGoToBoard }) => {
 
       {/* ── Row 1: Core KPI Cards ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KpiCard label="Total Applications" value={total}            sub="all time"            color="#6366f1" icon="📋" />
-        <KpiCard label="Active Pipeline"    value={activeCount}      sub="not rejected/closed" color="#06b6d4" icon="🚀" />
-        <KpiCard label="Response Rate"      value={`${responseRate}%`} sub="applied → interview" color="#8b5cf6" icon="💬" />
-        <KpiCard label="Interview Rate"     value={`${interviewRate}%`} sub="of applications"  color="#f59e0b" icon="🎙️" />
-        <KpiCard label="Offers Received"    value={byStatus.Offer}   sub={`${offerRate}% offer rate`}  color="#10b981" icon="🎉" />
-        <KpiCard label="Needs Follow-Up"    value={followUpCount}    sub="overdue applications" color="#f59e0b" icon="⚡" />
+        <KpiCard label="Total Applications" value={total}            sub="all time"            color="var(--color-wishlist)" icon="📋" />
+        <KpiCard label="Active Pipeline"    value={activeCount}      sub="not rejected/closed" color="var(--color-applied)" icon="🚀" />
+        <KpiCard label="Response Rate"      value={`${responseRate}%`} sub="applied → interview" color="var(--color-interview)" icon="💬" />
+        <KpiCard label="Interview Rate"     value={`${interviewRate}%`} sub="of applications"  color="var(--color-assessment)" icon="🎙️" />
+        <KpiCard label="Offers Received"    value={byStatus.Offer}   sub={`${offerRate}% offer rate`}  color="var(--color-offer)" icon="🎉" />
+        <KpiCard label="Needs Follow-Up"    value={followUpCount}    sub="overdue applications" color="var(--color-assessment)" icon="⚡" />
       </div>
 
       {/* ── Row 1b: Interview + Time KPI Cards ─────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <KpiCard label="Total Interviews" value={totalInterviews} sub="logged across all apps" color="#8b5cf6" icon="🎙️" />
-        <KpiCard label="Upcoming (14d)"   value={upcomingInterviewCount} sub="scheduled interviews"  color="#06b6d4" icon="📅" />
-        <KpiCard label="Avg Days → Interview" value={avgDaysToInterview !== null ? `${avgDaysToInterview}d` : '—'} sub="from applied to interview" color="#f59e0b" icon="⏱️" />
-        <KpiCard label="Avg Days → Offer"    value={avgDaysToOffer    !== null ? `${avgDaysToOffer}d`    : '—'} sub="from applied to offer"    color="#10b981" icon="🏆" />
+        <KpiCard label="Total Interviews" value={totalInterviews} sub="logged across all apps" color="var(--color-interview)" icon="🎙️" />
+        <KpiCard label="Upcoming (14d)"   value={upcomingInterviewCount} sub="scheduled interviews"  color="var(--color-applied)" icon="📅" />
+        <KpiCard label="Avg Days → Interview" value={avgDaysToInterview !== null ? `${avgDaysToInterview}d` : '—'} sub="from applied to interview" color="var(--color-assessment)" icon="⏱️" />
+        <KpiCard label="Avg Days → Offer"    value={avgDaysToOffer    !== null ? `${avgDaysToOffer}d`    : '—'} sub="from applied to offer"    color="var(--color-offer)" icon="🏆" />
       </div>
 
       {/* ── Row 2: Area Chart + Pie Chart ────────────────────────────────────── */}
@@ -239,11 +238,11 @@ const Analytics = ({ onGoToBoard }) => {
             <AreaChart data={byMonth} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="var(--color-wishlist)" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="var(--color-wishlist)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" vertical={false} />
               <XAxis
                 dataKey="label"
                 tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }}
@@ -259,11 +258,11 @@ const Analytics = ({ onGoToBoard }) => {
               <Area
                 type="monotone"
                 dataKey="count"
-                stroke="#6366f1"
+                stroke="var(--color-wishlist)"
                 strokeWidth={2.5}
                 fill="url(#areaGradient)"
-                dot={{ fill: '#6366f1', r: 3, strokeWidth: 0 }}
-                activeDot={{ fill: '#a5b4fc', r: 5, strokeWidth: 0 }}
+                dot={{ fill: 'var(--color-wishlist)', r: 3, strokeWidth: 0 }}
+                activeDot={{ fill: 'var(--color-brand-primary)', r: 5, strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -313,7 +312,7 @@ const Analytics = ({ onGoToBoard }) => {
             margin={{ top: 0, right: 40, left: 80, bottom: 0 }}
             barSize={20}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" horizontal={false} />
             <XAxis
               type="number"
               tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }}
@@ -328,7 +327,7 @@ const Analytics = ({ onGoToBoard }) => {
               width={78}
             />
             <Tooltip
-              cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+              cursor={{ fill: 'var(--color-border-subtle)' }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const d = payload[0].payload
@@ -356,9 +355,9 @@ const Analytics = ({ onGoToBoard }) => {
       <ChartSection title="🎯 Conversion Rates">
         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
           {[
-            { label: 'Response Rate', value: responseRate, color: '#8b5cf6', desc: 'Applications that got a response' },
-            { label: 'Interview Rate', value: interviewRate, color: '#06b6d4', desc: 'Applications that led to an interview' },
-            { label: 'Offer Rate',    value: offerRate,    color: '#10b981', desc: 'Applications that converted to offers' },
+            { label: 'Response Rate', value: responseRate, color: 'var(--color-interview)', desc: 'Applications that got a response' },
+            { label: 'Interview Rate', value: interviewRate, color: 'var(--color-applied)', desc: 'Applications that led to an interview' },
+            { label: 'Offer Rate',    value: offerRate,    color: 'var(--color-offer)', desc: 'Applications that converted to offers' },
           ].map(({ label, value, color, desc }) => (
             <div key={label} style={{ flex: '1 1 180px', minWidth: '160px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -366,7 +365,7 @@ const Analytics = ({ onGoToBoard }) => {
                 <span style={{ fontSize: '0.9rem', fontWeight: 900, color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{value}%</span>
               </div>
               {/* Progress bar */}
-              <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
+              <div style={{ height: '8px', background: 'var(--color-border-subtle)', borderRadius: '999px', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', width: `${Math.min(value, 100)}%`,
                   background: `linear-gradient(90deg, ${color}aa, ${color})`,
@@ -386,7 +385,7 @@ const Analytics = ({ onGoToBoard }) => {
         <ChartSection title="📡 Applications by Source">
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={bySource} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
               <XAxis dataKey="source" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
@@ -414,7 +413,7 @@ const Analytics = ({ onGoToBoard }) => {
               </thead>
               <tbody>
                 {sourceConversion.map((s, i) => (
-                  <tr key={s.source} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                  <tr key={s.source} style={{ borderBottom: '1px solid var(--color-border)', background: i % 2 === 0 ? 'transparent' : 'var(--color-surface-raised)' }}>
                     <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{s.source}</td>
                     <td style={{ padding: '0.6rem 0.75rem', color: 'var(--color-text-secondary)' }}>{s.total}</td>
                     <td style={{ padding: '0.6rem 0.75rem', color: 'var(--color-text-secondary)' }}>{s.responses}</td>
@@ -422,18 +421,18 @@ const Analytics = ({ onGoToBoard }) => {
                     <td style={{ padding: '0.6rem 0.75rem', color: '#6ee7b7' }}>{s.offers}</td>
                     <td style={{ padding: '0.6rem 0.75rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', minWidth: '60px' }}>
-                          <div style={{ height: '100%', width: `${s.responseRate}%`, background: '#8b5cf6', borderRadius: '999px', transition: 'width 0.6s ease' }} />
+                        <div style={{ flex: 1, height: '6px', background: 'var(--color-border-subtle)', borderRadius: '999px', minWidth: '60px' }}>
+                          <div style={{ height: '100%', width: `${s.responseRate}%`, background: 'var(--color-interview)', borderRadius: '999px', transition: 'width 0.6s ease' }} />
                         </div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#a5b4fc', minWidth: '34px' }}>{s.responseRate}%</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-interview)', minWidth: '34px' }}>{s.responseRate}%</span>
                       </div>
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', minWidth: '60px' }}>
-                          <div style={{ height: '100%', width: `${s.offerRate}%`, background: '#10b981', borderRadius: '999px', transition: 'width 0.6s ease' }} />
+                        <div style={{ flex: 1, height: '6px', background: 'var(--color-border-subtle)', borderRadius: '999px', minWidth: '60px' }}>
+                          <div style={{ height: '100%', width: `${s.offerRate}%`, background: 'var(--color-offer)', borderRadius: '999px', transition: 'width 0.6s ease' }} />
                         </div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6ee7b7', minWidth: '34px' }}>{s.offerRate}%</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-offer)', minWidth: '34px' }}>{s.offerRate}%</span>
                       </div>
                     </td>
                   </tr>
@@ -449,10 +448,10 @@ const Analytics = ({ onGoToBoard }) => {
         <ChartSection title="📅 This Week's Activity">
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             {[
-              { label: 'Applications Added',    value: weekly.applications, color: '#6366f1', icon: '📋' },
-              { label: 'Interviews Scheduled',  value: weekly.interviews,   color: '#8b5cf6', icon: '🎙️' },
-              { label: 'Offers Received',       value: weekly.offers,       color: '#10b981', icon: '🎉' },
-              { label: 'Ghosted (All Time)',     value: ghostedCount,        color: '#9ca3af', icon: '👻' },
+              { label: 'Applications Added',    value: weekly.applications, color: 'var(--color-wishlist)', icon: '📋' },
+              { label: 'Interviews Scheduled',  value: weekly.interviews,   color: 'var(--color-interview)', icon: '🎙️' },
+              { label: 'Offers Received',       value: weekly.offers,       color: 'var(--color-offer)', icon: '🎉' },
+              { label: 'Ghosted (All Time)',     value: ghostedCount,        color: 'var(--color-text-muted)', icon: '👻' },
             ].map(({ label, value, color, icon }) => (
               <div key={label} style={{
                 flex: '1 1 160px', minWidth: '130px',

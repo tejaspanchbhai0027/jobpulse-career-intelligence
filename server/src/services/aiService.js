@@ -19,7 +19,7 @@ const initializeAI = () => {
 
 const getModel = () => {
   const client = initializeAI();
-  return client ? { client, modelName: 'gemini-2.5-flash' } : null;
+  return client ? { client, modelName: 'gemini-3.6-flash' } : null;
 };
 
 /**
@@ -57,16 +57,21 @@ const analyzeJD = async (jobDescription) => {
     """
   `;
 
-  const response = await client.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      temperature: 0.2,
-    },
-  });
+  try {
+    const response = await client.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2,
+      },
+    });
 
-  return JSON.parse(response.text);
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error('AI Service Error (analyzeJD):', error.message);
+    throw new Error('AI analysis is currently unavailable. Please try again later.');
+  }
 };
 
 /**
@@ -114,16 +119,21 @@ const matchResume = async (jobDescription, resumeText) => {
     """
   `;
 
-  const response = await client.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      temperature: 0.2,
-    },
-  });
+  try {
+    const response = await client.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2,
+      },
+    });
 
-  return JSON.parse(response.text);
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error('AI Service Error (matchResume):', error.message);
+    throw new Error('AI resume matching is currently unavailable.');
+  }
 };
 
 /**
@@ -160,16 +170,21 @@ const summarizeNotes = async (notes) => {
     """
   `;
 
-  const response = await client.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      temperature: 0.2,
-    },
-  });
+  try {
+    const response = await client.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2,
+      },
+    });
 
-  return JSON.parse(response.text);
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error('AI Service Error (summarizeNotes):', error.message);
+    throw new Error('AI note summarization is currently unavailable.');
+  }
 };
 
 /**
@@ -196,6 +211,8 @@ const chatCopilot = async (userMessage, contextData) => {
     
     Instructions:
     - Base your advice ONLY on the provided context. If they ask about applications, look at the JSON.
+    - If the user asks for advice or priorities, READ the \`recommendations\` array and present the highest priority recommendations first.
+    - When explaining a recommendation, ALWAYS cite the \`reason\` and \`evidence\` provided in the Recommendation object.
     - Be concise, direct, and actionable. Do not use filler.
     - Use Markdown for formatting (bolding, bullet points).
     - If the context is empty, tell them they need to track more applications.
@@ -204,10 +221,7 @@ const chatCopilot = async (userMessage, contextData) => {
   try {
     const response = await client.models.generateContent({
       model: modelName,
-      contents: [
-        { role: 'user', parts: [{ text: systemPrompt }] },
-        { role: 'user', parts: [{ text: userMessage }] }
-      ],
+      contents: `${systemPrompt}\n\nUser Message: ${userMessage}`,
       config: {
         temperature: 0.3,
       },
@@ -219,9 +233,73 @@ const chatCopilot = async (userMessage, contextData) => {
   }
 };
 
+/**
+ * Analyzes an interview transcript and extracts questions.
+ */
+const analyzeInterviewTranscript = async (transcript) => {
+  const modelConfig = getModel();
+  
+  if (!modelConfig) {
+    // Return mock data for testing if API key is not set
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return {
+      questions: [
+        {
+          question: "Can you describe your experience with React?",
+          topic: "Technical",
+          difficulty: 3,
+          myAnswer: "I have used React for 2 years building SPAs.",
+          betterAnswer: "It's good to mention specific projects and state management libraries like Redux or Context API you've used."
+        }
+      ]
+    };
+  }
+
+  const { client, modelName } = modelConfig;
+  const prompt = `
+    You are an expert technical interviewer and career coach.
+    Analyze the following interview transcript or notes and extract the questions that were asked.
+    For each question, extract the candidate's answer (if available), determine the topic (e.g., Technical, Behavioral, System Design, HR), assign a difficulty score (1-5), and generate a "Better Answer" that would impress a top-tier company.
+    
+    Return ONLY a JSON object with this EXACT schema:
+    {
+      "questions": [
+        {
+          "question": "String (the exact or inferred question asked by the interviewer)",
+          "topic": "String (e.g. Technical, Behavioral, General)",
+          "difficulty": Number (1 to 5),
+          "myAnswer": "String (the candidate's answer based on the notes, or empty string if not provided)",
+          "betterAnswer": "String (A comprehensive, optimal answer you generate based on best practices)"
+        }
+      ]
+    }
+    
+    Notes/Transcript to analyze:
+    """
+    ${transcript}
+    """
+  `;
+
+  try {
+    const response = await client.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2,
+      },
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error('AI Interview Analysis Error:', error);
+    throw new Error('Failed to analyze interview transcript');
+  }
+};
+
 module.exports = {
   analyzeJD,
   matchResume,
   summarizeNotes,
   chatCopilot,
+  analyzeInterviewTranscript,
 };

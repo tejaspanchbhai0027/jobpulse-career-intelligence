@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
-const { sendWelcomeEmail } = require('../services/emailService');
+const Institution = require('../models/Institution');
+const { sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 // ── Helper: sign JWT ──────────────────────────────────────────────────────────
 const signToken = (userId) =>
@@ -26,6 +28,10 @@ const sendTokenResponse = (user, statusCode, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      institutionId: user.institutionId,
+      placementOfficerId: user.placementOfficerId,
+      mentorId: user.mentorId,
       followUpWindowDays: user.followUpWindowDays,
       jobSearchGoal: user.jobSearchGoal,
       emailNotifications: user.emailNotifications,
@@ -33,6 +39,18 @@ const sendTokenResponse = (user, statusCode, res) => {
       interviewReminders: user.interviewReminders,
       resumeText:         user.resumeText,
       savedFilters:       user.savedFilters,
+      phone:              user.phone,
+      location:           user.location,
+      preferredLocations: user.preferredLocations,
+      linkedinUrl:        user.linkedinUrl,
+      githubUrl:          user.githubUrl,
+      portfolioUrl:       user.portfolioUrl,
+      targetRoles:        user.targetRoles,
+      targetSalary:       user.targetSalary,
+      employmentTypes:    user.employmentTypes,
+      workPreference:     user.workPreference,
+      professionalBio:    user.professionalBio,
+      intelligenceSettings: user.intelligenceSettings,
       createdAt: user.createdAt,
     },
   });
@@ -43,7 +61,7 @@ const sendTokenResponse = (user, statusCode, res) => {
 // ── @access Public
 const register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, institutionId, placementOfficerId, mentorId } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -52,13 +70,50 @@ const register = async (req, res, next) => {
       return next(new Error('An account with that email already exists'));
     }
 
-    const user = await User.create({ name, email, password });
+    // Validate Institution and Hierarchy if provided
+    if (institutionId) {
+      const institution = await Institution.findById(institutionId);
+      if (!institution) {
+        res.status(400);
+        return next(new Error('Invalid institution ID'));
+      }
+    }
+
+    if (placementOfficerId) {
+      const officer = await User.findOne({ _id: placementOfficerId, role: 'PLACEMENT_OFFICER', institutionId, isActive: true });
+      if (!officer) {
+        res.status(400);
+        return next(new Error('Invalid or unauthorized placement officer'));
+      }
+    }
+
+    if (mentorId) {
+      const mentor = await User.findOne({ _id: mentorId, role: 'MENTOR', placementOfficerId, institutionId, isActive: true });
+      if (!mentor) {
+        res.status(400);
+        return next(new Error('Invalid or unauthorized mentor'));
+      }
+    }
+
+    const user = await User.create({ 
+      name, 
+      email, 
+      password,
+      institutionId: institutionId || null,
+      placementOfficerId: placementOfficerId || null,
+      mentorId: mentorId || null
+    });
     // ── Send welcome email asynchronously ─────────────────────────
-    sendWelcomeEmail({ to: email, name }).catch(err => {
+    sendWelcomeEmail({ to: email, name, role: user.role }).catch(err => {
       console.error('[AuthController] Failed to send welcome email:', err);
     });
 
-    sendTokenResponse(user, 201, res);
+    const populatedUser = await User.findById(user._id)
+      .populate('institutionId', 'name code')
+      .populate('placementOfficerId', 'name email')
+      .populate('mentorId', 'name email');
+
+    sendTokenResponse(populatedUser, 201, res);
   } catch (error) {
     next(error);
   }
@@ -70,13 +125,39 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    require('fs').appendFileSync('login_debug.log', `[Login Attempt] Email: ${email}, Password length: ${password?.length}\n`);
+    
     // Zod middleware already validated format — just authenticate
     const user = await User.findOne({ email }).select('+password');
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user) {
+      require('fs').appendFileSync('login_debug.log', `[Login Failed] User not found: ${email}\n`);
       res.status(401);
       return next(new Error('Invalid email or password'));
     }
-    sendTokenResponse(user, 200, res);
+    
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      require('fs').appendFileSync('login_debug.log', `[Login Failed] Password mismatch for: ${email}\n`);
+      res.status(401);
+      return next(new Error('Invalid email or password'));
+    }
+    require('fs').appendFileSync('login_debug.log', `[Login Success] Email: ${email}\n`);
+
+    if (user.isActive === false) {
+      res.status(403);
+      return next(new Error('This account has been deactivated. Please contact your administrator.'));
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    const populatedUser = await User.findById(user._id)
+      .populate('institutionId', 'name code')
+      .populate('placementOfficerId', 'name email')
+      .populate('mentorId', 'name email');
+
+    sendTokenResponse(populatedUser, 200, res);
   } catch (error) {
     next(error);
   }
@@ -88,13 +169,21 @@ const login = async (req, res, next) => {
 const getMe = async (req, res, next) => {
   try {
     // req.user is attached by authMiddleware
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id)
+      .populate('institutionId', 'name code')
+      .populate('placementOfficerId', 'name email')
+      .populate('mentorId', 'name email');
+
     res.status(200).json({
       success: true,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
+        institutionId: user.institutionId,
+        placementOfficerId: user.placementOfficerId,
+        mentorId: user.mentorId,
         followUpWindowDays: user.followUpWindowDays,
         jobSearchGoal: user.jobSearchGoal,
         emailNotifications: user.emailNotifications,
@@ -102,6 +191,18 @@ const getMe = async (req, res, next) => {
         interviewReminders: user.interviewReminders,
         resumeText:         user.resumeText,
         savedFilters:       user.savedFilters,
+        phone:              user.phone,
+        location:           user.location,
+        preferredLocations: user.preferredLocations,
+        linkedinUrl:        user.linkedinUrl,
+        githubUrl:          user.githubUrl,
+        portfolioUrl:       user.portfolioUrl,
+        targetRoles:        user.targetRoles,
+        targetSalary:       user.targetSalary,
+        employmentTypes:    user.employmentTypes,
+        workPreference:     user.workPreference,
+        professionalBio:    user.professionalBio,
+        intelligenceSettings: user.intelligenceSettings,
         createdAt: user.createdAt,
       },
     });
@@ -116,7 +217,13 @@ const getMe = async (req, res, next) => {
 const updateSettings = async (req, res, next) => {
   try {
     // Zod already validated and coerced all fields
-    const allowedSettings = ['followUpWindowDays', 'jobSearchGoal', 'emailNotifications', 'deadlineReminders', 'interviewReminders', 'resumeText', 'savedFilters'];
+    const allowedSettings = [
+      'name', 'followUpWindowDays', 'jobSearchGoal', 'emailNotifications', 
+      'deadlineReminders', 'interviewReminders', 'resumeText', 'savedFilters',
+      'phone', 'location', 'preferredLocations', 'linkedinUrl', 'githubUrl', 
+      'portfolioUrl', 'targetRoles', 'targetSalary', 'employmentTypes', 
+      'workPreference', 'professionalBio', 'intelligenceSettings'
+    ];
     const updates = {};
     allowedSettings.forEach(field => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -134,6 +241,8 @@ const updateSettings = async (req, res, next) => {
         id:                 user._id,
         name:               user.name,
         email:              user.email,
+        role:               user.role,
+        institutionId:      user.institutionId,
         followUpWindowDays: user.followUpWindowDays,
         jobSearchGoal:      user.jobSearchGoal,
         emailNotifications: user.emailNotifications,
@@ -141,6 +250,18 @@ const updateSettings = async (req, res, next) => {
         interviewReminders: user.interviewReminders,
         resumeText:         user.resumeText,
         savedFilters:       user.savedFilters,
+        phone:              user.phone,
+        location:           user.location,
+        preferredLocations: user.preferredLocations,
+        linkedinUrl:        user.linkedinUrl,
+        githubUrl:          user.githubUrl,
+        portfolioUrl:       user.portfolioUrl,
+        targetRoles:        user.targetRoles,
+        targetSalary:       user.targetSalary,
+        employmentTypes:    user.employmentTypes,
+        workPreference:     user.workPreference,
+        professionalBio:    user.professionalBio,
+        intelligenceSettings: user.intelligenceSettings,
         createdAt:          user.createdAt,
       },
     });
@@ -157,6 +278,8 @@ const logout = async (req, res, next) => {
     res.cookie('jwt', 'none', {
       expires: new Date(Date.now() + 10 * 1000),
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
     });
 
     res.status(200).json({
@@ -168,4 +291,277 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, updateSettings };
+// ── @route  DELETE /api/auth/me ──────────────────────────────────────────────
+// ── @desc   Delete user account
+// ── @access Private
+const deleteAccount = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      res.status(404);
+      return next(new Error('User not found'));
+    }
+
+    // Optional: Also delete applications, interviews, resumes, etc.
+    // For now we just delete the user record to fulfill privacy requirement.
+    await User.findByIdAndDelete(req.user.id);
+    
+    // Clear cookie
+    res.cookie('jwt', 'none', {
+      expires: new Date(Date.now() + 10 * 1000),
+      httpOnly: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  GET /api/auth/institutions/validate ──────────────────────────────
+// ── @desc   Validate institution code and return details
+// ── @access Public
+const validateInstitutionCode = async (req, res, next) => {
+  try {
+    const { code } = req.query;
+    if (!code) {
+      res.status(400);
+      return next(new Error('Institution code is required'));
+    }
+
+    const institution = await Institution.findOne({ code: code.toUpperCase() });
+    if (!institution) {
+      res.status(404);
+      return next(new Error('Invalid institution code'));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        _id: institution._id,
+        name: institution.name,
+        code: institution.code
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  GET /api/auth/institutions/:institutionId/placement-officers ───────
+// ── @desc   Get active placement officers for an institution
+// ── @access Public
+const getPlacementOfficers = async (req, res, next) => {
+  try {
+    const { institutionId } = req.params;
+    const officers = await User.find({
+      institutionId,
+      role: 'PLACEMENT_OFFICER',
+      isActive: true
+    }).select('_id name');
+
+    res.status(200).json({
+      success: true,
+      data: officers
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  GET /api/auth/placement-officers/:officerId/mentors ────────────────
+// ── @desc   Get active mentors for a placement officer
+// ── @access Public
+const getMentors = async (req, res, next) => {
+  try {
+    const { officerId } = req.params;
+    const mentors = await User.find({
+      placementOfficerId: officerId,
+      role: 'MENTOR',
+      isActive: true
+    }).select('_id name');
+
+    res.status(200).json({
+      success: true,
+      data: mentors
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  POST /api/auth/forgot-password ────────────────────────────────────
+// ── @desc   Send a reset password email
+// ── @access Public
+const forgotPassword = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    
+    // Always return this generic response to prevent email enumeration
+    const genericResponse = 'If an account exists with this email, a password reset link has been sent.';
+
+    if (!user) {
+      return res.status(200).json({ success: true, data: genericResponse });
+    }
+
+    // Get reset token
+    const resetToken = user.getResetPasswordToken();
+    await user.save({ validateBeforeSave: false });
+
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+
+    try {
+      // Assuming sendPasswordResetEmail is imported from emailService.js
+      const { sendPasswordResetEmail } = require('../services/emailService');
+      const { error } = await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl,
+      });
+
+      if (error) {
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save({ validateBeforeSave: false });
+        console.error('[authController] Email could not be sent for reset password:', error.message);
+      }
+
+      return res.status(200).json({ success: true, data: genericResponse });
+    } catch (err) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+      
+      // Still return the generic response even if email sending fails, or log it
+      console.error('[authController] Email could not be sent for reset password:', err.message);
+      return res.status(200).json({ success: true, data: genericResponse });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  PUT /api/auth/reset-password/:token ──────────────────────────────
+// ── @desc   Reset password using token
+// ── @access Public
+const resetPassword = async (req, res, next) => {
+  try {
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(req.params.token)
+      .digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      res.status(400);
+      return next(new Error('Invalid token or token has expired'));
+    }
+
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  POST /api/auth/connect-institution ───────────────────────────────
+// ── @desc   Connect an independent student to an institution
+// ── @access Private (Student only)
+const connectInstitution = async (req, res, next) => {
+  try {
+    const { institutionId, placementOfficerId, mentorId } = req.body;
+
+    if (req.user.role !== 'STUDENT') {
+      res.status(403);
+      return next(new Error('Only students can connect to an institution'));
+    }
+
+    if (req.user.institutionId) {
+      res.status(400);
+      return next(new Error('You are already connected to an institution'));
+    }
+
+    const institution = await Institution.findById(institutionId);
+    if (!institution) {
+      res.status(400);
+      return next(new Error('Invalid institution ID'));
+    }
+
+    const officer = await User.findOne({ _id: placementOfficerId, role: 'PLACEMENT_OFFICER', institutionId, isActive: true });
+    if (!officer) {
+      res.status(400);
+      return next(new Error('Invalid or unauthorized placement officer'));
+    }
+
+    const mentor = await User.findOne({ _id: mentorId, role: 'MENTOR', placementOfficerId, institutionId, isActive: true });
+    if (!mentor) {
+      res.status(400);
+      return next(new Error('Invalid or unauthorized mentor'));
+    }
+
+    req.user.institutionId = institutionId;
+    req.user.placementOfficerId = placementOfficerId;
+    req.user.mentorId = mentorId;
+    
+    await req.user.save();
+
+    res.status(200).json({
+      success: true,
+      data: req.user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  POST /api/auth/send-verification ────────────────────────────────
+// ── @desc   Send email verification link
+// ── @access Private
+const sendVerificationEmail = async (req, res, next) => {
+  try {
+    // Stub for future implementation
+    res.status(200).json({ success: true, message: 'Verification email architecture prepared' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  POST /api/auth/verify-email ────────────────────────────────────
+// ── @desc   Verify email with token
+// ── @access Public
+const verifyEmail = async (req, res, next) => {
+  try {
+    // Stub for future implementation
+    res.status(200).json({ success: true, message: 'Email verification architecture prepared' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  logout,
+  getMe,
+  updateSettings,
+  deleteAccount,
+  validateInstitutionCode,
+  getPlacementOfficers,
+  getMentors,
+  forgotPassword,
+  resetPassword,
+  connectInstitution,
+  sendVerificationEmail,
+  verifyEmail
+};

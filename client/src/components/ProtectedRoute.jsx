@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-// Shows a spinner while auth state is being restored from localStorage
+// Shows a spinner while auth state is being restored from the backend via HttpOnly cookies
 const Spinner = () => (
   <div style={{
     minHeight: '100vh',
@@ -23,13 +23,24 @@ const Spinner = () => (
 
 // Wraps any route that requires authentication
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   const location = useLocation()
 
   if (loading) return <Spinner />
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  // Enforce student role
+  if (user.role === 'SUPER_ADMIN') {
+    return <Navigate to="/super-admin/dashboard" replace />
+  } else if (user.role === 'PLACEMENT_OFFICER') {
+    return <Navigate to="/officer/dashboard" replace />
+  } else if (user.role === 'MENTOR') {
+    return <Navigate to="/mentor/dashboard" replace />
+  } else if (user.role === 'INSTITUTION_ADMIN') {
+    return <Navigate to="/admin/dashboard" replace />
   }
 
   return children

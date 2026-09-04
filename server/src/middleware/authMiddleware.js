@@ -36,5 +36,34 @@ const protect = async (req, res, next) => {
     next(new Error('Not authorized — invalid or expired token'));
   }
 };
+// ── RBAC Middleware — verifies user role ────────────────────────────────────────
+const requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      res.status(401);
+      return next(new Error('Not authorized — user role missing'));
+    }
+    
+    if (!roles.includes(req.user.role)) {
+      res.status(403);
+      return next(new Error(`Forbidden — requires one of roles: ${roles.join(', ')}`));
+    }
+    
+    next();
+  };
+};
 
-module.exports = { protect };
+// ── RBAC Middleware — verifies institution access ──────────────────────────────
+const requireInstitutionAccess = (req, res, next) => {
+  if (!req.user || !req.user.institutionId) {
+    res.status(403);
+    return next(new Error('Forbidden — user is not assigned to an institution'));
+  }
+  
+  // Note: For actual endpoints, you might also compare req.user.institutionId
+  // with req.params.institutionId depending on the API design. 
+  // For now, this simply ensures the admin HAS an institution bound.
+  next();
+};
+
+module.exports = { protect, requireRole, requireInstitutionAccess };

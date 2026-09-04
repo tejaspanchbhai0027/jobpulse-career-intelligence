@@ -1,14 +1,19 @@
 const express    = require('express');
 const router     = require('express').Router();
 const mongoose   = require('mongoose');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRole } = require('../middleware/authMiddleware');
 const Application = require('../models/Application');
 const Interview   = require('../models/Interview');
+const MentorFeedback = require('../models/MentorFeedback');
+const { getStudentRecommendations, studentUpdateRecommendationStatus } = require('../controllers/mentorRecommendationController');
 
 // ── @route  GET /api/dashboard/stats ─────────────────────────────────────────
 // ── @desc   Return aggregated analytics for the authenticated user
 // ── @access Private
-router.get('/stats', protect, async (req, res, next) => {
+router.use(protect);
+router.use(requireRole('STUDENT'));
+
+router.get('/stats', async (req, res, next) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id);
 
@@ -220,5 +225,37 @@ router.get('/stats', protect, async (req, res, next) => {
     next(error);
   }
 });
+
+// ── @route  GET /api/dashboard/feedback ──────────────────────────────────────
+// ── @desc   Return mentor feedback for the student
+// ── @access Private
+router.get('/feedback', async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    
+    const query = { studentId: userId };
+    if (req.query.applicationId) {
+      query.applicationId = req.query.applicationId;
+    }
+
+    const feedback = await MentorFeedback.find(query)
+      .populate('mentorId', 'name email role')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: feedback });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── @route  GET /api/dashboard/recommendations ───────────────────────────────
+// ── @desc   Return support recommendations for the authenticated student
+// ── @access Private
+router.get('/recommendations', getStudentRecommendations);
+
+// ── @route  PATCH /api/dashboard/recommendations/:id/status ──────────────────
+// ── @desc   Update status of a recommendation by student
+// ── @access Private
+router.patch('/recommendations/:id/status', studentUpdateRecommendationStatus);
 
 module.exports = router;

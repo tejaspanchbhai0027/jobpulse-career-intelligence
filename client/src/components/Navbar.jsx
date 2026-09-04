@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false)
   const { isAuthenticated, user, logout } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
+  const { theme, toggleTheme } = useTheme()
 
   // Hide landing-style nav links on auth/dashboard pages
   const isAuthPage = ['/login', '/register', '/dashboard'].some(p => location.pathname.startsWith(p))
@@ -87,11 +89,57 @@ const Navbar = () => {
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            background: 'var(--color-surface-raised)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-secondary)',
+            borderRadius: '50%',
+            width: '36px', height: '36px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'var(--transition)',
+            marginRight: '0.5rem',
+          }}
+          title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+        >
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
+
         {isAuthenticated ? (
           /* ── Authenticated state ── */
           <>
-            <Link to="/dashboard" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Dashboard</Link>
-            <Link to="/intelligence" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Intelligence <span style={{fontSize: '0.65rem', background:'var(--color-brand)', color:'#fff', padding:'2px 4px', borderRadius:'4px', marginLeft:'4px'}}>BETA</span></Link>
+            <Link to="/dashboard" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Command Center</Link>
+            <Link to="/intelligence" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Intelligence <span style={{fontSize: '0.65rem', background:'var(--color-brand-primary)', color:'#fff', padding:'2px 4px', borderRadius:'4px', marginLeft:'4px'}}>BETA</span></Link>
+            <Link to="/settings" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Settings</Link>
+            
+            {/* Notification Bell */}
+            <button
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--color-text-secondary)',
+                width: '36px', height: '36px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'var(--transition)',
+                position: 'relative'
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--color-text-primary)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}
+              title="Notifications"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              {/* Optional unread badge can go here */}
+              <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: 'var(--color-brand-primary)', borderRadius: '50%', border: '2px solid var(--color-surface)' }}></span>
+            </button>
+
             <div className="hidden sm:block" style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 0.25rem' }} />
             {/* User avatar + name */}
             <div style={{
@@ -122,7 +170,7 @@ const Navbar = () => {
                 cursor: 'pointer',
                 borderRadius: '8px',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#fca5a5' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-danger)'; e.currentTarget.style.color = 'var(--color-danger)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
             >
               Sign out

@@ -1,6 +1,6 @@
 const express = require('express');
 const router  = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRole } = require('../middleware/authMiddleware');
 const { validate, validateQuery } = require('../middleware/validate');
 const {
   createApplicationSchema,
@@ -19,11 +19,15 @@ const {
 
 // IMPORTANT: specific named routes must be declared BEFORE /:id to avoid param collision
 
+// ── Apply authentication and student role to all application routes ────────────
+router.use(protect);
+router.use(requireRole('STUDENT'));
+
 // @route  GET /api/applications/needs-followup
-router.get('/needs-followup', protect, getApplicationsNeedingFollowUp);
+router.get('/needs-followup', getApplicationsNeedingFollowUp);
 
 // @route  GET /api/applications/export?format=csv|json
-router.get('/export', protect, validateQuery(exportSchema), exportApplications);
+router.get('/export', validateQuery(exportSchema), exportApplications);
 
 // @route  GET    /api/applications
 // @route  POST   /api/applications

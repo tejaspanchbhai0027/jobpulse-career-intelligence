@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import JDMatchWidget from '../components/intelligence/JDMatchWidget';
+import LogInterviewModal from '../components/modals/LogInterviewModal';
+import { ReactFlow, Controls, Background } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 const Intelligence = () => {
   const { user } = useAuth();
@@ -15,14 +19,25 @@ const Intelligence = () => {
   const [twin, setTwin] = useState(null);
   const [autopilot, setAutopilot] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [graphData, setGraphData] = useState({ nodes: [], edges: [] });
   
   const [loading, setLoading] = useState(true);
+  const [isLogQuestionModalOpen, setIsLogQuestionModalOpen] = useState(false);
+
+  const fetchQuestionsOnly = async () => {
+    try {
+      const qRes = await axios.get('/api/interviews/questions/bank', { withCredentials: true });
+      if (qRes.data.success) setQuestions(qRes.data.data);
+    } catch (err) {
+      console.error('Error fetching questions:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchIntelligenceData = async () => {
       setLoading(true);
       try {
-        const [dnaRes, diagRes, oppRes, resPerfRes, marketRes, twinRes, autoRes, qRes] = await Promise.all([
+        const [dnaRes, diagRes, oppRes, resPerfRes, marketRes, twinRes, autoRes, graphRes] = await Promise.all([
           axios.get('/api/intelligence/dna', { withCredentials: true }),
           axios.get('/api/intelligence/diagnosis', { withCredentials: true }),
           axios.get('/api/intelligence/opportunities', { withCredentials: true }),
@@ -30,7 +45,7 @@ const Intelligence = () => {
           axios.get('/api/intelligence/market', { withCredentials: true }),
           axios.get('/api/intelligence/twin', { withCredentials: true }),
           axios.get('/api/intelligence/autopilot', { withCredentials: true }),
-          axios.get('/api/interviews/questions/bank', { withCredentials: true })
+          axios.get('/api/intelligence/knowledge-graph', { withCredentials: true }),
         ]);
         
         if (dnaRes.data.success) setDna(dnaRes.data.data);
@@ -40,7 +55,9 @@ const Intelligence = () => {
         if (marketRes.data.success) setMarket(marketRes.data.data);
         if (twinRes.data.success) setTwin(twinRes.data.data);
         if (autoRes.data.success) setAutopilot(autoRes.data.data);
-        if (qRes.data.success) setQuestions(qRes.data.data);
+        if (graphRes.data.success) setGraphData(graphRes.data.data);
+        
+        await fetchQuestionsOnly();
       } catch (err) {
         console.error('Error fetching intelligence data:', err);
       } finally {
@@ -53,7 +70,7 @@ const Intelligence = () => {
   const tabStyle = (isActive) => ({
     padding: '0.75rem 1.25rem',
     cursor: 'pointer',
-    borderBottom: isActive ? '2px solid var(--color-brand)' : '2px solid transparent',
+    borderBottom: isActive ? '2px solid var(--color-brand-primary)' : '2px solid transparent',
     color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
     fontWeight: isActive ? 600 : 500,
     transition: 'var(--transition)'
@@ -72,7 +89,7 @@ const Intelligence = () => {
       
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '0.5rem' }}>
-          Career Intelligence <span style={{ fontSize: '1rem', padding: '0.2rem 0.5rem', background: 'rgba(99,102,241,0.1)', color: 'var(--color-brand)', borderRadius: '6px', verticalAlign: 'middle', marginLeft: '0.5rem' }}>BETA</span>
+          Career Intelligence <span style={{ fontSize: '1rem', padding: '0.2rem 0.5rem', background: 'rgba(99,102,241,0.1)', color: 'var(--color-brand-primary)', borderRadius: '6px', verticalAlign: 'middle', marginLeft: '0.5rem' }}>BETA</span>
         </h1>
         <p style={{ color: 'var(--color-text-secondary)' }}>JobPulse doesn't just track your job search — it learns what works and helps you optimize it.</p>
       </div>
@@ -90,13 +107,31 @@ const Intelligence = () => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>
-          <div className="spinner" style={{ margin: '0 auto 1rem', width: '30px', height: '30px', border: '3px solid var(--color-border)', borderTopColor: 'var(--color-brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <div className="spinner" style={{ margin: '0 auto 1rem', width: '30px', height: '30px', border: '3px solid var(--color-border)', borderTopColor: 'var(--color-brand-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
           Analyzing your application history...
         </div>
       ) : (
         <>
-          {activeTab === 'overview' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          {dna?.insufficientData ? (
+            <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--color-surface-raised)', borderRadius: '16px', border: '1px dashed var(--color-border)', marginTop: '2rem' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🧠</div>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '0.75rem' }}>AI needs more data</h2>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.05rem', maxWidth: '500px', margin: '0 auto 2rem' }}>
+                Career Intelligence gets smarter as you track your job search. Log your first few applications to unlock insights, bottleneck analysis, and JobPulse AI recommendations.
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <a href="/dashboard?view=board" className="btn-primary" style={{ padding: '0.75rem 1.5rem', fontWeight: 700, fontSize: '1rem', borderRadius: '8px', textDecoration: 'none' }}>
+                  + Log Application
+                </a>
+                <a href="/settings" style={{ padding: '0.75rem 1.5rem', fontWeight: 700, fontSize: '1rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
+                  Upload Resume
+                </a>
+              </div>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'overview' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
               
               {/* CAREER TWIN */}
               <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
@@ -119,7 +154,7 @@ const Intelligence = () => {
                       </div>
                       <div style={{ background: 'var(--color-surface-raised)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                         <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Best Strategy</div>
-                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-brand)' }}>{twin.bestStrategy}</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-brand-primary)' }}>{twin.bestStrategy}</div>
                       </div>
                       <div style={{ background: 'var(--color-surface-raised)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                         <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Typical Response</div>
@@ -155,8 +190,8 @@ const Intelligence = () => {
                       </div>
                       <div style={{ color: 'var(--color-border)' }}>→</div>
                       <div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-brand)' }}>{diagnosis?.funnel.interviews}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-brand)' }}>Interviews</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-brand-primary)' }}>{diagnosis?.funnel.interviews}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-brand-primary)' }}>Interviews</div>
                       </div>
                     </div>
                     <div style={{ padding: '1rem', background: 'rgba(239,68,68,0.1)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>
@@ -173,29 +208,36 @@ const Intelligence = () => {
 
               {/* DNA Card */}
               <div style={cardStyle}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>Job Search DNA</h3>
-                {dna?.insufficientData ? (
-                  <p style={{ color: 'var(--color-text-secondary)' }}>{dna.message}</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>Overall Response Rate</span>
-                      <span style={{ fontWeight: 600 }}>{dna?.responseRate}%</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>Interview Conversion</span>
-                      <span style={{ fontWeight: 600 }}>{dna?.interviewRate}%</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>Best Performing Source</span>
-                      <span style={{ fontWeight: 600, color: 'var(--color-brand)' }}>{dna?.bestSource}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>Best Resume Version</span>
-                      <span style={{ fontWeight: 600 }}>{dna?.bestResume}</span>
-                    </div>
+                <details open>
+                  <summary style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem', cursor: 'pointer', outline: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    Job Search DNA Data
+                    <span className="text-[var(--color-brand-primary)] text-sm">▼</span>
+                  </summary>
+                  <div className="pt-2">
+                    {dna?.insufficientData ? (
+                      <p style={{ color: 'var(--color-text-secondary)' }}>{dna.message}</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>Overall Response Rate</span>
+                          <span style={{ fontWeight: 600 }}>{dna?.responseRate}%</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>Interview Conversion</span>
+                          <span style={{ fontWeight: 600 }}>{dna?.interviewRate}%</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>Best Performing Source</span>
+                          <span style={{ fontWeight: 600, color: 'var(--color-brand-primary)' }}>{dna?.bestSource}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>Best Resume Version</span>
+                          <span style={{ fontWeight: 600 }}>{dna?.bestResume}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </details>
               </div>
 
             </div>
@@ -219,7 +261,7 @@ const Intelligence = () => {
                         <div style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>{opp.company} • Status: {opp.status}</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: opp.score >= 80 ? '#10b981' : opp.score >= 60 ? 'var(--color-brand)' : opp.score >= 40 ? '#f59e0b' : '#ef4444' }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: opp.score >= 80 ? 'var(--color-success)' : opp.score >= 60 ? 'var(--color-brand-primary)' : opp.score >= 40 ? 'var(--color-warning)' : 'var(--color-danger)' }}>
                           {opp.score}
                         </div>
                         <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>
@@ -244,9 +286,9 @@ const Intelligence = () => {
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <div style={{ width: '80px', fontWeight: 600 }}>{skill.name}</div>
                       <div style={{ flex: 1, background: 'var(--color-surface-overlay)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', background: 'var(--color-brand)', width: `${skill.demand}%` }} />
+                        <div style={{ height: '100%', background: 'var(--color-brand-primary)', width: `${skill.demand}%` }} />
                       </div>
-                      <div style={{ width: '80px', textAlign: 'right', fontSize: '0.8rem', color: skill.userMatch === 'Strong' ? '#10b981' : skill.userMatch === 'Missing' ? '#ef4444' : '#f59e0b' }}>
+                      <div style={{ width: '80px', textAlign: 'right', fontSize: '0.8rem', color: skill.userMatch === 'Strong' ? 'var(--color-success)' : skill.userMatch === 'Missing' ? 'var(--color-danger)' : 'var(--color-warning)' }}>
                         {skill.userMatch}
                       </div>
                     </div>
@@ -266,7 +308,7 @@ const Intelligence = () => {
                   </thead>
                   <tbody>
                     {market.locationMap?.map((loc, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
                         <td style={{ padding: '0.75rem 0', fontWeight: 500 }}>{loc.location}</td>
                         <td style={{ padding: '0.75rem 0' }}>{loc.applications}</td>
                         <td style={{ padding: '0.75rem 0' }}>{loc.responseRate.toFixed(0)}%</td>
@@ -303,7 +345,7 @@ const Intelligence = () => {
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>Salary Intelligence</h3>
                 {market.salaryIntelligence?.totalWithSalary > 0 ? (
                   <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--color-brand)' }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--color-brand-primary)' }}>
                       ₹{market.salaryIntelligence.average}
                     </div>
                     <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Average Target Salary</div>
@@ -318,11 +360,13 @@ const Intelligence = () => {
           )}
 
           {activeTab === 'resume' && (
-            <div style={cardStyle}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>Resume Performance Tracking</h3>
-              <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                {resumePerf?.message}
-              </p>
+            <div>
+              <JDMatchWidget />
+              <div style={cardStyle}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>Resume Performance Tracking</h3>
+                <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                  {resumePerf?.message}
+                </p>
               
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
@@ -336,7 +380,7 @@ const Intelligence = () => {
                   </thead>
                   <tbody>
                     {resumePerf?.stats?.map((stat, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
                         <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{stat.version}</td>
                         <td style={{ padding: '1rem 0.5rem' }}>{stat.applications}</td>
                         <td style={{ padding: '1rem 0.5rem' }}>{(stat.responseRate * 100).toFixed(0)}%</td>
@@ -349,6 +393,7 @@ const Intelligence = () => {
                 </table>
               </div>
             </div>
+          </div>
           )}
 
           {activeTab === 'experiments' && (
@@ -356,7 +401,7 @@ const Intelligence = () => {
               
               {/* Strategy Autopilot */}
               {autopilot && autopilot.hasSuggestion && (
-                <div style={{ ...cardStyle, border: '2px solid var(--color-brand)', background: 'linear-gradient(135deg, rgba(6,182,212,0.05) 0%, rgba(139,92,246,0.05) 100%)' }}>
+                <div style={{ ...cardStyle, border: '2px solid var(--color-brand-primary)', background: 'linear-gradient(135deg, rgba(6,182,212,0.05) 0%, rgba(139,92,246,0.05) 100%)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div style={{ display: 'inline-block', background: 'var(--gradient-brand)', color: '#fff', fontSize: '0.75rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '12px', textTransform: 'uppercase', marginBottom: '1rem' }}>
@@ -368,7 +413,7 @@ const Intelligence = () => {
                         {autopilot.suggestion}
                       </div>
                       <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button style={{ background: 'var(--color-brand)', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>Start Experiment</button>
+                        <button style={{ background: 'var(--color-brand-primary)', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>Start Experiment</button>
                         <button style={{ background: 'transparent', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', padding: '0.5rem 1rem', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>Dismiss</button>
                       </div>
                     </div>
@@ -393,7 +438,7 @@ const Intelligence = () => {
               <div style={cardStyle}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Personal Interview Question Bank</h3>
-                  <button className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>+ Log Question</button>
+                  <button className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => setIsLogQuestionModalOpen(true)}>+ Log Question</button>
                 </div>
                 {questions.length === 0 ? (
                   <p style={{ color: 'var(--color-text-secondary)' }}>You haven't logged any interview questions yet.</p>
@@ -402,7 +447,7 @@ const Intelligence = () => {
                     {questions.map(q => (
                       <div key={q._id} style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-brand)' }}>{q.topic}</span>
+                          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-brand-primary)' }}>{q.topic}</span>
                           <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>Difficulty: {q.difficulty}/5</span>
                         </div>
                         <p style={{ fontWeight: 700, marginBottom: '0.75rem' }}>{q.question}</p>
@@ -433,49 +478,54 @@ const Intelligence = () => {
                 A visual representation of how your skills, resumes, and target companies interconnect based on your application history.
               </p>
               
-              <div style={{ padding: '2rem', background: '#0a0a0a', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', position: 'relative' }}>
-                {/* CSS based Knowledge Graph Mockup for Beta */}
-                <div style={{ position: 'relative', width: '100%', height: '350px' }}>
-                  {/* Central Node */}
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--gradient-brand)', padding: '1rem', borderRadius: '50%', color: '#fff', fontWeight: 800, zIndex: 10, boxShadow: '0 0 20px rgba(99,102,241,0.5)' }}>
-                    YOU
+              <div style={{ padding: '2rem', background: 'var(--color-surface-raised)', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '600px', position: 'relative' }}>
+                {graphData.nodes.length <= 1 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '1rem' }}>KNOWLEDGE GRAPH</h4>
+                    <p>Your career network is still developing.</p>
+                    <p style={{ marginBottom: '1.5rem' }}>Add applications, skills, resumes, and interview data to unlock more relationships.</p>
+                    <button style={{ background: 'var(--color-brand-primary)', color: '#fff', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 700 }}>
+                      Add Application
+                    </button>
                   </div>
-                  
-                  {/* Skill Nodes */}
-                  <div style={{ position: 'absolute', top: '10%', left: '30%', padding: '0.5rem 1rem', background: '#10b981', borderRadius: '20px', color: '#000', fontWeight: 700 }}>Node.js</div>
-                  <div style={{ position: 'absolute', top: '20%', left: '70%', padding: '0.5rem 1rem', background: '#10b981', borderRadius: '20px', color: '#000', fontWeight: 700 }}>React</div>
-                  
-                  {/* Company Nodes */}
-                  <div style={{ position: 'absolute', bottom: '15%', left: '20%', padding: '0.5rem 1rem', background: '#3b82f6', borderRadius: '20px', color: '#fff', fontWeight: 700 }}>Google (3 Apps)</div>
-                  <div style={{ position: 'absolute', bottom: '25%', left: '75%', padding: '0.5rem 1rem', background: '#3b82f6', borderRadius: '20px', color: '#fff', fontWeight: 700 }}>Stripe (Offer)</div>
-                  
-                  {/* Resume Nodes */}
-                  <div style={{ position: 'absolute', top: '50%', left: '10%', padding: '0.5rem 1rem', background: '#8b5cf6', borderRadius: '20px', color: '#fff', fontWeight: 700 }}>Backend CV v2</div>
-                  <div style={{ position: 'absolute', top: '50%', right: '10%', padding: '0.5rem 1rem', background: '#8b5cf6', borderRadius: '20px', color: '#fff', fontWeight: 700 }}>Fullstack CV v1</div>
-
-                  {/* SVG Lines */}
-                  <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-                    <line x1="50%" y1="50%" x2="35%" y2="15%" stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" opacity="0.5" />
-                    <line x1="50%" y1="50%" x2="72%" y2="23%" stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" opacity="0.5" />
-                    <line x1="50%" y1="50%" x2="25%" y2="80%" stroke="#3b82f6" strokeWidth="2" opacity="0.5" />
-                    <line x1="50%" y1="50%" x2="78%" y2="72%" stroke="#3b82f6" strokeWidth="2" opacity="0.5" />
-                    <line x1="50%" y1="50%" x2="18%" y2="52%" stroke="#8b5cf6" strokeWidth="2" opacity="0.5" />
-                    <line x1="50%" y1="50%" x2="82%" y2="52%" stroke="#8b5cf6" strokeWidth="2" opacity="0.5" />
-                    
-                    {/* Cross Connections */}
-                    <line x1="18%" y1="52%" x2="25%" y2="80%" stroke="#444" strokeWidth="1" opacity="0.4" />
-                    <line x1="35%" y1="15%" x2="25%" y2="80%" stroke="#444" strokeWidth="1" opacity="0.4" />
-                  </svg>
-                </div>
+                ) : (
+                  <div style={{ width: '100%', height: '550px' }}>
+                    <ReactFlow 
+                      nodes={graphData.nodes} 
+                      edges={graphData.edges}
+                      fitView
+                      minZoom={0.2}
+                      maxZoom={1.5}
+                      nodesDraggable={true}
+                      nodesConnectable={false}
+                      elementsSelectable={true}
+                      panOnScroll={true}
+                      zoomOnScroll={false}
+                      preventScrolling={false}
+                      zoomOnPinch={true}
+                    >
+                      <Background color="#ccc" gap={16} />
+                      <Controls />
+                    </ReactFlow>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
         </>
       )}
+        </>
+      )}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin { 100% { transform: rotate(360deg); } }
       `}} />
+
+      <LogInterviewModal 
+        isOpen={isLogQuestionModalOpen} 
+        onClose={() => setIsLogQuestionModalOpen(false)} 
+        onSuccess={fetchQuestionsOnly} 
+      />
     </div>
   );
 };

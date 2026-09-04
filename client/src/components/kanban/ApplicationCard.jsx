@@ -20,20 +20,20 @@ const getDeadlineInfo = (closingDate) => {
   const deadline = new Date(closingDate)
   deadline.setHours(0, 0, 0, 0)
   const diff = Math.round((deadline - now) / (1000 * 60 * 60 * 24))
-  if (diff < 0)  return { label: 'Closed',        color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.35)'   }
-  if (diff === 0) return { label: 'Closes today',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)'  }
-  if (diff <= 3)  return { label: `${diff}d left`, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)'  }
-  return           { label: `${diff}d left`,        color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.25)' }
+  if (diff < 0)  return { label: 'Closed',        color: 'var(--color-danger)', bg: 'transparent',   border: '1px solid var(--color-danger)'   }
+  if (diff === 0) return { label: 'Closes today',  color: 'var(--color-warning)', bg: 'transparent', border: '1px solid var(--color-warning)'  }
+  if (diff <= 3)  return { label: `${diff}d left`, color: 'var(--color-warning)', bg: 'transparent', border: '1px solid var(--color-warning)'  }
+  return           { label: `${diff}d left`,        color: 'var(--color-text-secondary)', bg: 'transparent', border: '1px solid var(--color-border)' }
 }
 
-const TYPE_COLORS = {
-  'Full-time':  { text: '#a5b4fc', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.3)'  },
-  'Internship': { text: '#67e8f9', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.3)'   },
-  'Part-time':  { text: '#fcd34d', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.3)'  },
-  'Contract':   { text: '#c4b5fd', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.3)'  },
+const JOB_TYPE_COLORS = {
+  'Full-time':  { text: 'var(--color-success)', bg: 'rgba(22,163,74,0.1)',  border: 'rgba(22,163,74,0.2)'  },
+  'Part-time':  { text: 'var(--color-brand-primary)', bg: 'rgba(37,99,235,0.1)',  border: 'rgba(37,99,235,0.2)'  },
+  'Internship': { text: 'var(--color-warning)', bg: 'rgba(217,119,6,0.1)',  border: 'rgba(217,119,6,0.2)'  },
+  'Contract':   { text: 'var(--color-interview)', bg: 'rgba(71,85,105,0.1)',  border: 'rgba(71,85,105,0.2)'  },
 }
 
-const ApplicationCard = ({ app, onEdit, onDelete, onUpdateApplication, columnColor = '#6366f1' }) => {
+const ApplicationCard = ({ app, onEdit, onDelete, onUpdateApplication, columnColor = 'var(--color-wishlist)' }) => {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const handleStatusChange = (e) => {
@@ -46,7 +46,7 @@ const ApplicationCard = ({ app, onEdit, onDelete, onUpdateApplication, columnCol
   }
 
   const deadline   = getDeadlineInfo(app.closingDate)
-  const typeColors = TYPE_COLORS[app.type] || TYPE_COLORS['Full-time']
+  const typeColors = JOB_TYPE_COLORS[app.type] || JOB_TYPE_COLORS['Full-time']
   const intelligence = calculateApplicationScore(app)
 
   const cardStyle = {
@@ -141,7 +141,7 @@ const ApplicationCard = ({ app, onEdit, onDelete, onUpdateApplication, columnCol
             style={{
               padding: '0.25rem 0.5rem',
               background: 'var(--color-surface-overlay)',
-              border: `1px solid ${columnColor}55`,
+              border: `1px solid var(--color-border)`,
               borderRadius: '6px',
               color: 'var(--color-text-primary)',
               fontSize: '0.75rem',

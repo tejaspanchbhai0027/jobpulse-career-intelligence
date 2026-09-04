@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import useInterviews from '../../hooks/useInterviews'
+import api from '../../api/axios'
 import InterviewSection from './InterviewSection'
 import useAI from '../../hooks/useAI'
+import useInterviews from '../../hooks/useInterviews'
 import { calculateApplicationScore, calculateTrustSignals } from '../../utils/scoreCalculator'
 
 const STATUSES = ['Wishlist', 'Applied', 'Assessment', 'Interview', 'Offer', 'Rejected']
@@ -63,7 +64,10 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
   const [error, setError]         = useState('')
   const [loading, setLoading]     = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('details') // 'details' | 'interviews'
+  const [activeTab, setActiveTab] = useState('details') // 'details' | 'interviews' | 'intelligence' | 'advisor'
+  const [feedback, setFeedback] = useState([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [resumes, setResumes] = useState([])
 
   // AI state
   const { analyzeJD, matchResume, summarizeNotes, loading: aiLoading, error: aiError } = useAI()
@@ -77,6 +81,20 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
   // Sync form when modal opens/changes
   useEffect(() => {
     if (!isOpen) return
+
+    // Fetch Resumes
+    const fetchResumes = async () => {
+      try {
+        const res = await api.get('/resumes')
+        if (res.data.success) {
+          setResumes(res.data.data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch resumes for modal', err)
+      }
+    }
+    fetchResumes()
+
     if (application) {
       setForm({
         company:       application.company       || '',
@@ -109,8 +127,25 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
     if (application) {
       const hasAdvanced = application.salary || application.source || application.contact || application.resumeVersion || application.jobDescription
       setAdvancedOpen(!!hasAdvanced)
+      
+      // Fetch feedback specific to this application
+      const fetchFeedback = async () => {
+        setFeedbackLoading(true)
+        try {
+          const res = await api.get(`/dashboard/feedback?applicationId=${application._id}`)
+          if (res.data.success) {
+            setFeedback(res.data.data)
+          }
+        } catch (err) {
+          console.error('Failed to fetch application feedback', err)
+        } finally {
+          setFeedbackLoading(false)
+        }
+      }
+      fetchFeedback()
     } else {
       setAdvancedOpen(false)
+      setFeedback([])
     }
   }, [application, isOpen])
 
@@ -209,12 +244,9 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="glass-card"
+        className="glass-card w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-[560px] flex flex-col relative"
         style={{
-          width: '100%', maxWidth: '560px',
-          maxHeight: '90vh', overflowY: 'auto',
           animation: 'slide-up 0.2s ease',
-          position: 'relative',
         }}
       >
         {/* Header */}
@@ -237,11 +269,12 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
             </p>
             {/* Tab switcher — only for edit mode */}
             {isEdit && (
-              <div style={{ display: 'flex', gap: '4px', marginTop: '0.6rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', padding: '3px', width: 'fit-content' }}>
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '0.6rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', padding: '3px', width: '100%' }}>
                 {[
                   { id: 'details', label: '📋 Details' }, 
                   { id: 'interviews', label: `🎙️ Interviews${interviews.length ? ` (${interviews.length})` : ''}` },
-                  { id: 'intelligence', label: '🧠 Intelligence' }
+                  { id: 'intelligence', label: '🧠 Intelligence' },
+                  { id: 'advisor', label: `📝 Advisor Notes${feedback.length ? ` (${feedback.length})` : ''}` }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -288,7 +321,8 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
           const trustInfo = isEdit && application ? calculateTrustSignals(application) : null
 
           return (
-            <form onSubmit={handleSubmit} style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '1.75rem' }}>
+              <div className="flex flex-col gap-4 flex-1">
               {/* Error */}
           {error && (
             <div style={{
@@ -491,12 +525,22 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
 
                 {/* Resume Version */}
                 <div>
-                  <label style={labelStyle}>Resume Version Used</label>
-                  <input
+                  <label style={labelStyle}>Resume Used</label>
+                  <select
                     name="resumeVersion" value={form.resumeVersion} onChange={handleChange}
-                    placeholder="Resume v2 - Backend focus"
                     style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}
-                  />
+                  >
+                    <option value="">— Select a Resume —</option>
+                    {resumes.map(r => (
+                      <option key={r._id} value={r.name}>
+                        {r.name} {r.isDefault ? '(Default)' : ''}
+                      </option>
+                    ))}
+                    {/* Fallback for legacy free-text values that don't match active resumes */}
+                    {form.resumeVersion && !resumes.some(r => r.name === form.resumeVersion) && (
+                      <option value={form.resumeVersion}>Legacy: {form.resumeVersion}</option>
+                    )}
+                  </select>
                 </div>
 
                 {/* Job Description & AI Insights */}
@@ -512,7 +556,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
                     name="jobDescription" value={form.jobDescription} onChange={handleChange}
                     placeholder="Paste the full job description here to use AI insights..."
                     rows={4}
-                    style={{ ...inputStyle, resize: 'vertical', minHeight: '80px', lineHeight: 1.6 }}
+                    style={{ ...inputStyle, resize: 'vertical', minHeight: '80px', lineHeight: 1.6, overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                     onFocus={focusStyle} onBlur={blurStyle}
                   />
 
@@ -527,7 +571,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
                   {jdAnalysis && (
                     <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '8px' }}>
                       <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#a5b4fc', marginBottom: '0.5rem' }}>✨ JD Analysis</h4>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                         <p><strong style={{color:'var(--color-text-secondary)'}}>Role:</strong> {jdAnalysis.role}</p>
                         <p><strong style={{color:'var(--color-text-secondary)'}}>Experience:</strong> {jdAnalysis.experience}</p>
                         <p style={{ marginTop: '0.4rem' }}><strong style={{color:'var(--color-text-secondary)'}}>Skills:</strong> {jdAnalysis.skills?.join(', ')}</p>
@@ -552,7 +596,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
                           {resumeMatchData.matchScore}%
                         </span>
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                         <div style={{ color: '#6ee7b7' }}><strong>Strong:</strong> {resumeMatchData.strong?.join(', ')}</div>
                         <div style={{ color: '#fca5a5', marginTop: '0.4rem' }}><strong>Missing:</strong> {resumeMatchData.missing?.join(', ')}</div>
                         <div style={{ color: '#a5b4fc', marginTop: '0.4rem' }}><strong>Suggested Keywords:</strong> {resumeMatchData.suggestedKeywords?.join(', ')}</div>
@@ -675,6 +719,39 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
             </div>
           )}
 
+          {/* ── Advisor Notes Tab (edit mode only) ──────────────────────────── */}
+          {isEdit && activeTab === 'advisor' && (
+            <div style={{ padding: '0 1.75rem 1rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '1rem', letterSpacing: '-0.01em' }}>
+                Feedback & Advice
+              </h3>
+              {feedbackLoading ? (
+                <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Loading feedback...</div>
+              ) : feedback.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', color: 'var(--color-text-secondary)', fontSize: '0.95rem' }}>
+                  No mentor feedback linked to this application yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {feedback.map(f => (
+                    <div key={f._id} style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-brand-primary)' }}>{f.type}</span>
+                        <span>{new Date(f.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div style={{ color: 'var(--color-text-primary)', fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                        {f.content}
+                      </div>
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        — {f.mentorId?.name || 'Advisor'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Follow-up History */}
           {isEdit && (
             <div>
@@ -707,8 +784,9 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
             </div>
           )}
 
+              </div>
           {/* Footer buttons */}
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+          <div className="mt-6 pt-4 border-t border-[var(--color-border)] flex gap-3 justify-between items-center sticky bottom-0 bg-[var(--color-surface)] pb-safe">
             <div>
               {isEdit && (
                 <button

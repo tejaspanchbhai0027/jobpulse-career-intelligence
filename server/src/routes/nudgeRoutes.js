@@ -1,13 +1,16 @@
 const express = require('express');
 const router  = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRole } = require('../middleware/authMiddleware');
 const { runFollowUpCheck } = require('../jobs/followUpJob');
 
 // ── @route  POST /api/nudge/run ───────────────────────────────────────────────
 // ── @desc   Manually trigger the follow-up check for the logged-in user
 //            (great for demos and testing without waiting for the daily cron)
 // ── @access Private
-router.post('/run', protect, async (req, res, next) => {
+router.use(protect);
+router.use(requireRole('STUDENT'));
+
+router.post('/run', async (req, res, next) => {
   try {
     const result = await runFollowUpCheck(req.user.id);
 
@@ -26,7 +29,7 @@ router.post('/run', protect, async (req, res, next) => {
 // ── @route  GET /api/nudge/status ─────────────────────────────────────────────
 // ── @desc   Get current follow-up status for the logged-in user
 // ── @access Private
-router.get('/status', protect, async (req, res, next) => {
+router.get('/status', async (req, res, next) => {
   try {
     const Application = require('../models/Application');
     const count = await Application.countDocuments({

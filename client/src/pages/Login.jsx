@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
-  const { login } = useAuth()
+  const { login, logout } = useAuth()
   const navigate   = useNavigate()
   const location   = useLocation()
   const from       = location.state?.from?.pathname || '/dashboard'
@@ -23,7 +23,13 @@ const Login = () => {
     setLoading(true)
     setError('')
     try {
-      await login(form.email, form.password)
+      const data = await login(form.email, form.password)
+      
+      // We no longer log out non-students here. Instead, we let them proceed to /dashboard.
+      // The ProtectedRoute component will intercept non-students and redirect them to their correct portals 
+      // (e.g. /admin/dashboard, /officer/dashboard, etc.)
+      
+      // Proceed
       navigate(from, { replace: true })
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password')
@@ -145,9 +151,9 @@ const Login = () => {
                 <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', letterSpacing: '0.03em' }}>
                   PASSWORD
                 </label>
-                <button type="button" style={{ background: 'none', border: 'none', color: 'var(--color-brand-primary)', fontSize: '0.8rem', cursor: 'pointer', padding: 0, fontWeight: 500 }}>
+                <Link to="/forgot-password" style={{ background: 'none', border: 'none', color: 'var(--color-brand-primary)', fontSize: '0.8rem', cursor: 'pointer', padding: 0, fontWeight: 500, textDecoration: 'none' }}>
                   Forgot password?
-                </button>
+                </Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input

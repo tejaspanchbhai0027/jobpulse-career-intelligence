@@ -3,6 +3,7 @@ const aiService = require('../services/aiService');
 const User = require('../models/User');
 const Application = require('../models/Application');
 const Interview = require('../models/Interview');
+const { getRecommendations } = require('../services/intelligence/decisionEngine');
 
 // @desc    Analyze a Job Description
 // @route   POST /api/ai/analyze-jd
@@ -68,6 +69,7 @@ const copilotChat = asyncHandler(async (req, res) => {
     totalApplications: applications.length,
     activeApplications: applications.filter(a => a.status !== 'Rejected').length,
     interviewsScheduled: interviews.length,
+    recommendations: getRecommendations(applications, interviews),
     applicationsList: applications.slice(0, 50), // Send latest 50 to avoid token limits
     interviewsList: interviews
   };
@@ -76,9 +78,24 @@ const copilotChat = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: reply });
 });
 
+// @desc    Analyze interview transcript
+// @route   POST /api/intelligence/analyze-transcript
+// @access  Private
+const analyzeInterviewTranscript = asyncHandler(async (req, res) => {
+  const { transcript } = req.body;
+  if (!transcript) {
+    res.status(400);
+    throw new Error('transcript is required');
+  }
+
+  const analysis = await aiService.analyzeInterviewTranscript(transcript);
+  res.status(200).json({ success: true, data: analysis });
+});
+
 module.exports = {
   analyzeJD,
   matchResume,
   summarizeNotes,
   copilotChat,
+  analyzeInterviewTranscript,
 };

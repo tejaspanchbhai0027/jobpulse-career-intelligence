@@ -18,6 +18,7 @@
   "license": "MIT",
   "dependencies": {
     "@google/genai": "^2.19.0",
+    "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -25,12 +26,14 @@
     "express": "^5.2.1",
     "express-async-handler": "^1.2.0",
     "express-mongo-sanitize": "^2.2.0",
-    "express-rate-limit": "^8.6.2",
+    "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.3",
     "morgan": "^1.11.0",
+    "multer": "^2.2.0",
     "node-cron": "^4.6.0",
+    "pdf-parse": "^2.4.5",
     "resend": "^6.21.0",
     "zod": "^4.4.3"
   },

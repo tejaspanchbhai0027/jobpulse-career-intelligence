@@ -1,6 +1,6 @@
 const express = require('express');
 const router  = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireRole } = require('../middleware/authMiddleware');
 const { 
   getInterviews, 
   getUpcomingInterviews, 
@@ -13,6 +13,7 @@ const {
 } = require('../controllers/interviewController');
 
 router.use(protect);
+router.use(requireRole('STUDENT'));
 
 // @route  GET /api/interviews/upcoming
 router.get('/upcoming', getUpcomingInterviews);

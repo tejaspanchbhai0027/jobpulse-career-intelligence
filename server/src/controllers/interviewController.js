@@ -196,24 +196,31 @@ const getQuestionBank = asyncHandler(async (req, res) => {
 // @route   POST /api/interviews/questions/bank
 // @access  Private
 const addQuestion = asyncHandler(async (req, res) => {
-  const { question, topic, difficulty, myAnswer, betterAnswer, interviewId } = req.body;
+  // Support both single question object and an array of questions
+  const payload = Array.isArray(req.body) ? req.body : [req.body];
+  
+  const createdQuestions = [];
 
-  if (!question) {
-    res.status(400);
-    throw new Error('Question text is required');
+  for (const item of payload) {
+    const { question, topic, difficulty, myAnswer, betterAnswer, interviewId } = item;
+    if (!question) continue; // skip invalid
+
+    const newQuestion = await InterviewQuestion.create({
+      user: req.user._id,
+      question,
+      topic,
+      difficulty,
+      myAnswer,
+      betterAnswer,
+      interview: interviewId || null
+    });
+    createdQuestions.push(newQuestion);
   }
 
-  const newQuestion = await InterviewQuestion.create({
-    user: req.user._id,
-    question,
-    topic,
-    difficulty,
-    myAnswer,
-    betterAnswer,
-    interview: interviewId || null
+  res.status(201).json({ 
+    success: true, 
+    data: Array.isArray(req.body) ? createdQuestions : createdQuestions[0] 
   });
-
-  res.status(201).json({ success: true, data: newQuestion });
 });
 
 module.exports = {

@@ -81,8 +81,8 @@ const StepCard = ({ number, title, description }) => (
       borderRadius: '12px',
       background: 'var(--gradient-brand)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 800, fontSize: '1rem', color: '#fff',
-      boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+      fontWeight: 800, fontSize: '1rem', color: 'var(--color-white)',
+      boxShadow: '0 4px 16px var(--color-brand-primary-shadow)',
     }}>
       {number}
     </div>
@@ -162,26 +162,17 @@ const KanbanPreview = () => {
 /* ── Nudge Alert Preview ───────────────────────────────────────────────────── */
 
 const NudgeAlert = () => (
-  <div style={{
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '0.85rem',
-    padding: '1rem 1.25rem',
-    background: 'rgba(245,158,11,0.08)',
-    border: '1px solid rgba(245,158,11,0.3)',
-    borderRadius: '12px',
-    marginTop: '1rem',
-  }}>
-    <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⚡</div>
-    <div>
-      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f59e0b', marginBottom: '0.2rem' }}>
-        Follow-Up Reminder
-      </div>
-      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-        Your application to <strong style={{ color: 'var(--color-text-primary)' }}>Software Engineer @ Google</strong> has been sitting for <strong style={{ color: '#f59e0b' }}>9 days</strong> with no update. Time to follow up!
+    <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-warning)', padding: '1rem 1.25rem', borderRadius: '12px', display: 'flex', gap: '1rem', alignItems: 'flex-start', boxShadow: 'var(--shadow-card)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ fontSize: '1.5rem', marginTop: '0.2rem' }}>⚡</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-warning)', marginBottom: '0.2rem' }}>
+          Follow-up Needed
+        </div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>
+          Your application to <strong style={{ color: 'var(--color-text-primary)' }}>Software Engineer @ Google</strong> has been sitting for <strong style={{ color: 'var(--color-warning)' }}>9 days</strong> with no update. Time to follow up!
+        </p>
       </div>
     </div>
-  </div>
 )
 
 /* ── Main Home Page ────────────────────────────────────────────────────────── */
@@ -210,7 +201,7 @@ const Home = () => {
           transform: 'translate(-50%, -50%)',
           width: '600px', height: '600px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.1) 40%, transparent 70%)',
+          background: 'var(--gradient-radial-glow)',
           pointerEvents: 'none',
           zIndex: 0,
         }} />
@@ -223,18 +214,18 @@ const Home = () => {
             alignItems: 'center',
             gap: '0.5rem',
             padding: '0.4rem 1rem',
-            background: 'rgba(99,102,241,0.12)',
-            border: '1px solid rgba(99,102,241,0.35)',
+            background: 'var(--color-brand-primary-light)',
+            border: '1px solid var(--color-brand-primary-border)',
             borderRadius: '999px',
             fontSize: '0.8rem',
             fontWeight: 600,
-            color: '#a5b4fc',
+            color: 'var(--color-brand-primary)',
             marginBottom: '1.5rem',
             position: 'relative',
             zIndex: 1,
           }}
         >
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#6366f1', display: 'inline-block', animation: 'pulse-glow 2s infinite' }} />
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-text-muted)', display: 'inline-block', animation: 'pulse-glow 2s infinite' }} />
           Smart Job Application Tracker
         </div>
 
@@ -323,7 +314,9 @@ const Home = () => {
           </div>
           <div className="animate-float">
             <KanbanPreview />
-            <NudgeAlert />
+            <div style={{ marginTop: '1rem' }}>
+              <NudgeAlert />
+            </div>
           </div>
         </div>
       </section>
@@ -369,23 +362,23 @@ const Home = () => {
             description="A daily cron job flags applications stuck in 'Applied' for 7+ days and emails you before the window closes."
             color="var(--color-brand-accent)"
           />
-          <FeatureCard
-            icon="📊"
-            title="Dashboard Analytics"
-            description="Charts for applications per week, status breakdown, and average response time so you can optimize your approach."
-            color="#f59e0b"
+          <FeatureCard 
+            icon="📝" 
+            title="Interview Preparation" 
+            description="Store notes, track technical rounds, and log questions asked in a centralized space."
+            color="var(--color-warning)"
           />
-          <FeatureCard
-            icon="🔍"
-            title="Search & Filter"
-            description="Instantly find any application by company name, status stage, or date range applied."
-            color="#10b981"
+          <FeatureCard 
+            icon="🏆" 
+            title="Offer Negotiation" 
+            description="Compare multiple offers side-by-side with total compensation breakdowns."
+            color="var(--color-offer)"
           />
-          <FeatureCard
-            icon="⚙️"
-            title="Configurable Reminders"
-            description="Set your follow-up window globally or per application. 3 days for hot roles, 14 days for passive ones."
-            color="#ef4444"
+          <FeatureCard 
+            icon="📉" 
+            title="Rejection Analysis" 
+            description="Identify bottlenecks in your pipeline by seeing exactly where you fall out of the funnel."
+            color="var(--color-rejected)"
           />
         </div>
       </section>

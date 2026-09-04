@@ -6,7 +6,6 @@ import { useAllInterviews } from '../hooks/useInterviews'
 import KanbanBoard, { STATUSES } from '../components/kanban/KanbanBoard'
 import CommandCenter from '../components/dashboard/CommandCenter'
 import ApplicationModal from '../components/modals/ApplicationModal'
-import SettingsModal from '../components/modals/SettingsModal'
 import Toast from '../components/ui/Toast'
 import Analytics from './Analytics'
 import api from '../api/axios'
@@ -81,15 +80,11 @@ const Dashboard = () => {
       .slice(0, 10)
   }, [allInterviews])
 
-  // Modal state
-  const [modalOpen, setModalOpen]         = useState(false)
-  const [editingApp, setEditingApp]       = useState(null)      // null = new, obj = edit
-  const [defaultStatus, setDefaultStatus] = useState('Applied') // pre-set status when adding from column
-  
-  // Phase 4 State
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
-  const [toasts, setToasts] = useState([])
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingApp, setEditingApp] = useState(null)
+  const [defaultStatus, setDefaultStatus] = useState('Applied')
   const [nudgeLoading, setNudgeLoading] = useState(false)
+  const [toasts, setToasts] = useState([])
 
   // Phase 5/9 — Active view tab
   const [activeView, setActiveView] = useState('command-center') // 'command-center' | 'board' | 'analytics'
@@ -208,16 +203,6 @@ const Dashboard = () => {
     }
   }
 
-  const handleSaveSettings = async (settings) => {
-    try {
-      await api.patch('/auth/settings', settings)
-      addToast('Settings Saved', 'Your follow-up preferences have been updated.', 'success')
-      fetchApplications() // re-fetch in case follow-up flags changed
-    } catch (err) {
-      throw err // handled by modal
-    }
-  }
-
   const handleSaveFilterView = async () => {
     const name = window.prompt('Enter a name for this filter view:')
     if (!name) return
@@ -283,9 +268,28 @@ const Dashboard = () => {
               fontSize: '1.5rem', fontWeight: 800,
               letterSpacing: '-0.025em', color: 'var(--color-text-primary)',
               lineHeight: 1,
+              marginBottom: '0.5rem'
             }}>
               Welcome back, <span className="gradient-text">{user?.name?.split(' ')[0]}</span> 👋
             </h1>
+            
+            {user?.role === 'STUDENT' && user?.institutionId && (
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-secondary)' }}>
+                  <span>🏫</span> {user.institutionId.name || 'Unknown Institution'}
+                </div>
+                {user.placementOfficerId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-secondary)' }}>
+                    <span>👔</span> PO: {user.placementOfficerId.name}
+                  </div>
+                )}
+                {user.mentorId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-secondary)' }}>
+                    <span>🎓</span> Mentor: {user.mentorId.name}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── View Tab Switcher ── */}
@@ -345,7 +349,7 @@ const Dashboard = () => {
               ) : '⚡ Run Check'}
             </button>
             <button
-              onClick={() => setSettingsModalOpen(true)}
+              onClick={() => navigate('/settings')}
               className="btn-secondary"
               title="Settings"
               style={{ padding: '0.6rem', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -365,50 +369,29 @@ const Dashboard = () => {
         {/* Row 2: Stats + Search */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
           {/* Stats */}
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <StatCard label="Total"     value={stats.total}     color="#6366f1" icon="📋" />
-            <StatCard label="Applied"   value={stats.applied}   color="#06b6d4" icon="📤" />
-            <StatCard label="Interview" value={stats.interview} color="#8b5cf6" icon="🎙️" />
-            <StatCard label="Offers"    value={stats.offer}     color="#10b981" icon="🎉" />
+          <div className="flex overflow-x-auto gap-3 w-full sm:w-auto sm:flex-wrap no-scrollbar pb-1">
+            <StatCard label="Total"     value={stats.total}     color="var(--color-wishlist)" icon="📋" />
+            <StatCard label="Applied"   value={stats.applied}   color="var(--color-applied)" icon="📤" />
+            <StatCard label="Interview" value={stats.interview} color="var(--color-interview)" icon="🎙️" />
+            <StatCard label="Offers"    value={stats.offer}     color="var(--color-offer)" icon="🎉" />
           </div>
 
           {/* Search + filter — only visible on Board tab */}
           {activeView === 'board' && (
-            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: '0.85rem', pointerEvents: 'none' }}>🔍</span>
+            <div className="flex gap-2 flex-wrap w-full md:w-auto">
+              <div className="relative w-full sm:w-auto flex-grow sm:flex-grow-0">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] text-sm pointer-events-none">🔍</span>
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search company, role…"
-                  style={{
-                    padding: '0.5rem 0.85rem 0.5rem 2rem',
-                    background: 'var(--color-surface-overlay)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    color: 'var(--color-text-primary)',
-                    fontSize: '0.85rem',
-                    outline: 'none',
-                    width: '200px',
-                    transition: 'var(--transition)',
-                  }}
-                  onFocus={e => { e.target.style.borderColor = 'var(--color-brand-primary)'; e.target.style.width = '240px' }}
-                  onBlur={e  => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.width = '200px' }}
+                  className="w-full sm:w-[200px] focus:sm:w-[240px] pl-8 pr-3 py-2 bg-[var(--color-surface-overlay)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] text-sm outline-none transition-all duration-300 focus:border-[var(--color-brand-primary)]"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                style={{
-                  padding: '0.5rem 0.85rem',
-                  background: 'var(--color-surface-overlay)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  color: 'var(--color-text-primary)',
-                  fontSize: '0.85rem',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
+                className="flex-grow sm:flex-grow-0 px-3 py-2 bg-[var(--color-surface-overlay)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] text-sm outline-none cursor-pointer"
               >
                 <option value="all" style={{ background: '#1c1c28' }}>All Stages</option>
                 <option value="needs_followup" style={{ background: '#1c1c28', color: '#f59e0b', fontWeight: 700 }}>⚡ Needs Follow-up</option>
@@ -420,16 +403,7 @@ const Dashboard = () => {
               <select
                 value={typeFilter}
                 onChange={e => setTypeFilter(e.target.value)}
-                style={{
-                  padding: '0.5rem 0.85rem',
-                  background: 'var(--color-surface-overlay)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  color: 'var(--color-text-primary)',
-                  fontSize: '0.85rem',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
+                className="flex-grow sm:flex-grow-0 px-3 py-2 bg-[var(--color-surface-overlay)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] text-sm outline-none cursor-pointer"
               >
                 <option value="all">All Types</option>
                 <option value="Full-time">Full-time</option>
@@ -548,7 +522,7 @@ const Dashboard = () => {
       {/* ── Main Content: Board, Analytics, or Command Center ──────────────────────────────────── */}
       {activeView === 'command-center' ? (
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <CommandCenter applications={applications} interviews={allInterviews} />
+          <CommandCenter applications={applications} interviews={allInterviews} stats={stats} upcomingInterviews={upcomingInterviews} />
         </div>
       ) : activeView === 'analytics' ? (
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -673,14 +647,6 @@ const Dashboard = () => {
         onSave={handleSave}
         onDelete={deleteApplication}
         defaultStatus={defaultStatus}
-      />
-      
-      {/* ── Settings Modal ─────────────────────────────────────────────────── */}
-      <SettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-        user={user}
-        onSave={handleSaveSettings}
       />
       
       {/* ── Toast Notifications ────────────────────────────────────────────── */}
