@@ -19,7 +19,7 @@ const sendTokenResponse = (user, statusCode, res) => {
     expires: new Date(Date.now() + parseInt(process.env.JWT_COOKIE_EXPIRES_IN || 7) * 24 * 60 * 60 * 1000),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
   };
 
   res.status(statusCode).cookie('jwt', token, cookieOptions).json({
@@ -279,7 +279,7 @@ const logout = async (req, res, next) => {
       expires: new Date(Date.now() + 10 * 1000),
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
     });
 
     res.status(200).json({
@@ -310,6 +310,8 @@ const deleteAccount = async (req, res, next) => {
     res.cookie('jwt', 'none', {
       expires: new Date(Date.now() + 10 * 1000),
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
     });
 
     res.status(200).json({
