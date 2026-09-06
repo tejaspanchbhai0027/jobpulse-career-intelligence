@@ -49,6 +49,7 @@ connectDB().then(() => {
 
 // ── Express App ────────────────────────────────────────────────────────────────
 const app = express();
+app.set('trust proxy', 1);
 
 // ── Security Headers (helmet) ─────────────────────────────────────────────────
 // Applies a sensible set of HTTP security headers.
