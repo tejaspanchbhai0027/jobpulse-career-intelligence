@@ -58,10 +58,10 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // Allow CLIENT_URL plus common Vite dev ports. Comma-separated env var supported.
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173,https://jobpulse-career-intelligence.vercel.app')
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map(o => o.trim().replace(/^["']|["']$/g, '').replace(/\/$/, ''))
-  .concat(['http://localhost:5174', 'http://localhost:4173']); // Vite alt + preview
+  .concat(['http://localhost:5174', 'http://localhost:4173', 'https://jobpulse-career-intelligence.vercel.app']); // Vite alt + preview + PROD
 
 app.use(cors({
   origin: (origin, callback) => {
