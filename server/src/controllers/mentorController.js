@@ -3,6 +3,8 @@ const User = require('../models/User');
 const Application = require('../models/Application');
 const Interview = require('../models/Interview');
 const MentorFeedback = require('../models/MentorFeedback');
+const Task = require('../models/Task');
+const InterventionSignal = require('../models/InterventionSignal');
 const copilotService = require('../services/intelligence/mentorCopilotService');
 
 // ── @route  GET /api/mentor/dashboard ──────────────────────────────────────────
@@ -57,6 +59,35 @@ const getDashboardMetrics = async (req, res, next) => {
       if (stat.totalApps > 0) activeSeekers.add(stat._id.toString());
     });
 
+    const tasks = await Task.find({ user: { $in: studentIds } }).lean();
+    const interventions = await InterventionSignal.find({ student: { $in: studentIds }, status: 'OPEN' }).lean();
+
+    const now = new Date();
+    
+    // Calculate Overdue Tasks
+    const studentsWithOverdueTasks = new Set();
+    tasks.forEach(t => {
+      if (!t.completed && t.dueDate && new Date(t.dueDate) < now) {
+        studentsWithOverdueTasks.add(t.user.toString());
+      }
+    });
+
+    // Calculate Requiring Attention
+    const studentsRequiringAttention = new Set();
+    interventions.forEach(i => {
+      studentsRequiringAttention.add(i.student.toString());
+    });
+    studentsWithOverdueTasks.forEach(id => studentsRequiringAttention.add(id));
+
+    // Calculate Recently Active (within 7 days)
+    const recentlyActiveStudents = new Set();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    applicationStats.forEach(stat => {
+      // Simplification: we check if they are in activeSeekers.
+      // For true recent activity, we'd need to check updatedAt of latest events.
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -64,7 +95,10 @@ const getDashboardMetrics = async (req, res, next) => {
         activeStudents: activeSeekers.size,
         applications: totalApplications,
         interviews: totalInterviews,
-        offers: totalOffers
+        offers: totalOffers,
+        studentsWithOverdueTasks: studentsWithOverdueTasks.size,
+        studentsRequiringAttention: studentsRequiringAttention.size,
+        openInterventions: interventions.length
       }
     });
   } catch (error) {
@@ -119,55 +153,16 @@ const getInterventions = async (req, res, next) => {
     const institutionId = req.user.institutionId;
     const mentorId = req.user._id;
 
-    const students = await User.find({ institutionId, mentorId, role: 'STUDENT' }).lean();
-    const studentIds = students.map(s => s._id);
+    // Fetch manually created or persisted interventions
+    const interventions = await InterventionSignal.find({ 
+      institutionId, 
+      mentorId 
+    })
+    .populate('student', 'name email batch department')
+    .sort({ createdAt: -1 })
+    .lean();
 
-    const applications = await Application.find({ user: { $in: studentIds } }).lean();
-    const interviews = await Interview.find({ user: { $in: studentIds } }).lean();
-
-    const signals = [];
-    const now = new Date();
-
-    for (let student of students) {
-      const studentApps = applications.filter(a => a.user.toString() === student._id.toString());
-      const studentInterviews = interviews.filter(i => i.user.toString() === student._id.toString());
-
-      if (studentApps.length === 0) {
-        signals.push({
-          student,
-          type: 'NO_ACTIVITY',
-          priority: 'MEDIUM',
-          reason: 'Student has not submitted any applications.',
-          detectedAt: now
-        });
-      }
-
-      if (studentApps.length >= 5 && studentInterviews.length === 0) {
-        signals.push({
-          student,
-          type: 'SKILL_GAP',
-          priority: 'HIGH',
-          reason: 'Student has submitted applications but secured 0 interviews.',
-          detectedAt: now
-        });
-      }
-      
-      const upcoming = studentInterviews.filter(i => new Date(i.scheduledAt) > now && new Date(i.scheduledAt) < new Date(now.getTime() + 48*60*60*1000));
-      for (let ui of upcoming) {
-         signals.push({
-          student,
-          type: 'UPCOMING_INTERVIEW',
-          priority: 'LOW',
-          reason: 'Student has an interview in the next 48 hours.',
-          detectedAt: now
-        });
-      }
-    }
-
-    const priorityWeight = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
-    signals.sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority]);
-
-    res.status(200).json({ success: true, count: signals.length, data: signals });
+    res.status(200).json({ success: true, count: interventions.length, data: interventions });
   } catch (error) {
     next(error);
   }
@@ -329,6 +324,82 @@ const queryCopilot = async (req, res, next) => {
   }
 };
 
+// ── @route  POST /api/mentor/interventions ──────────────────────────────────
+const createIntervention = async (req, res, next) => {
+  try {
+    const mentorId = req.user._id;
+    const institutionId = req.user.institutionId;
+    const { studentId, title, type, priority, reason, evidence, suggestedSupport, dueDate } = req.body;
+
+    const student = await User.findOne({ _id: studentId, mentorId, institutionId, role: 'STUDENT' });
+    if (!student) {
+      res.status(403);
+      return next(new Error('Student not found or not assigned to you'));
+    }
+
+    const intervention = await InterventionSignal.create({
+      student: studentId,
+      institutionId,
+      mentorId,
+      title,
+      type: type || 'OTHER',
+      category: priority === 'HIGH' ? 'HIGH ATTENTION' : 'WATCH', // legacy compatibility
+      priority: priority || 'MEDIUM',
+      reason,
+      evidence: evidence || '',
+      suggestedSupport: suggestedSupport || '',
+      dueDate,
+      status: 'OPEN'
+    });
+
+    res.status(201).json({ success: true, data: intervention });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  PATCH /api/mentor/interventions/:id ─────────────────────────────
+const updateIntervention = async (req, res, next) => {
+  try {
+    const mentorId = req.user._id;
+    const { id } = req.params;
+    const { status, priority, dueDate, followUpDate, mentorNotes, title, reason, suggestedSupport } = req.body;
+
+    const intervention = await InterventionSignal.findOne({ _id: id });
+    if (!intervention) {
+      res.status(404);
+      return next(new Error('Intervention not found'));
+    }
+
+    // Verify mentor owns this student
+    const student = await User.findOne({ _id: intervention.student, mentorId });
+    if (!student) {
+      res.status(403);
+      return next(new Error('Unauthorized'));
+    }
+
+    if (status) intervention.status = status;
+    if (priority) intervention.priority = priority;
+    if (dueDate !== undefined) intervention.dueDate = dueDate;
+    if (followUpDate !== undefined) intervention.followUpDate = followUpDate;
+    if (mentorNotes !== undefined) intervention.mentorNotes = mentorNotes;
+    if (title) intervention.title = title;
+    if (reason) intervention.reason = reason;
+    if (suggestedSupport) intervention.suggestedSupport = suggestedSupport;
+
+    if (status === 'RESOLVED' || status === 'CANCELLED') {
+      if (!intervention.resolvedAt) intervention.resolvedAt = new Date();
+    } else {
+      intervention.resolvedAt = null;
+    }
+
+    await intervention.save();
+    res.status(200).json({ success: true, data: intervention });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDashboardMetrics,
   getApplications,
@@ -339,5 +410,7 @@ module.exports = {
   createNote,
   updateNote,
   deleteNote,
-  queryCopilot
+  queryCopilot,
+  createIntervention,
+  updateIntervention
 };

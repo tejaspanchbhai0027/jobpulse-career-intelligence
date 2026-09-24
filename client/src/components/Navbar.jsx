@@ -52,8 +52,8 @@ const Navbar = () => {
         position: 'fixed',
         top: 0, left: 0, right: 0,
         zIndex: 50,
-        padding: '0 2rem',
-        height: '68px',
+        padding: '0 32px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -63,58 +63,56 @@ const Navbar = () => {
         borderBottom: scrolled ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
       }}
     >
-      {/* Logo */}
-      <Link
-        to={isAuthenticated ? '/dashboard' : '/'}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none' }}
-      >
-        <div style={{
-          width: '36px', height: '36px', borderRadius: '10px',
-          background: 'var(--gradient-brand)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(99,102,241,0.5)',
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M2 12h3l3-7 4 14 3-9 2 2h5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-        <span style={{
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontWeight: 800, fontSize: '1.25rem',
-          color: 'var(--color-text-primary)', letterSpacing: '-0.02em',
-        }}>
-          Job<span className="gradient-text">Pulse</span>
-        </span>
-      </Link>
-
-      {/* Right side */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text-secondary)',
-            borderRadius: '50%',
-            width: '36px', height: '36px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'var(--transition)',
-            marginRight: '0.5rem',
-          }}
-          title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+      <div style={{
+        width: '100%', maxWidth: '1200px', margin: '0 auto',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2rem'
+      }}>
+        {/* Left: Logo */}
+        <Link
+          to={isAuthenticated ? '/dashboard' : '/'}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}
         >
-          {theme === 'light' ? '🌙' : '☀️'}
-        </button>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '10px',
+            background: 'var(--gradient-brand)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(20,255,236,0.3)',
+            flexShrink: 0
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M2 12h3l3-7 4 14 3-9 2 2h5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontWeight: 800, fontSize: '1.25rem',
+            color: 'var(--color-text-primary)', letterSpacing: '-0.02em',
+            whiteSpace: 'nowrap'
+          }}>
+            Job<span className="gradient-text">Pulse</span>
+          </span>
+        </Link>
 
-        {isAuthenticated ? (
-          /* ── Authenticated state ── */
-          <>
-            <Link to="/dashboard" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Command Center</Link>
-            <Link to="/intelligence" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Intelligence <span style={{fontSize: '0.65rem', background:'var(--color-brand-primary)', color:'#fff', padding:'2px 4px', borderRadius:'4px', marginLeft:'4px'}}>BETA</span></Link>
-            <Link to="/settings" className="hidden sm:inline-block" style={linkStyle} {...linkHover}>Settings</Link>
+        {/* Center: Navigation */}
+        {isAuthenticated && (
+          <div className="hidden lg:flex items-center justify-center gap-1" style={{ flex: '1 1 auto', overflow: 'hidden' }}>
+            <Link to="/applications" style={linkStyle} {...linkHover}>Applications</Link>
+            <Link to="/interviews" style={linkStyle} {...linkHover}>Interviews</Link>
+            <Link to="/resume" style={linkStyle} {...linkHover}>Resume</Link>
+            <Link to="/tasks" style={linkStyle} {...linkHover}>Tasks</Link>
+            <Link to="/opportunities" style={linkStyle} {...linkHover}>Opportunities</Link>
+            <Link to="/placement-drives" style={linkStyle} {...linkHover}>Drives</Link>
+            <Link to="/readiness" style={linkStyle} {...linkHover}>Readiness</Link>
+            <Link to="/settings" style={linkStyle} {...linkHover}>Settings</Link>
+          </div>
+        )}
+
+        {/* Right side */}
+        <div style={{ display: 'flex', flexShrink: 0, justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+          
+          {isAuthenticated ? (
+            /* ── Authenticated state ── */
+            <>
             
             {/* Notification Bell */}
             <button
@@ -140,44 +138,52 @@ const Navbar = () => {
               <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: 'var(--color-brand-primary)', borderRadius: '50%', border: '2px solid var(--color-surface)' }}></span>
             </button>
 
-            <div className="hidden sm:block" style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 0.25rem' }} />
-            {/* User avatar + name */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.35rem 0.75rem',
-              background: 'var(--color-surface-raised)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '999px',
-            }}>
-              <div style={{
-                width: '26px', height: '26px', borderRadius: '50%',
-                background: 'var(--gradient-brand)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.7rem', fontWeight: 800, color: '#fff',
-              }}>
-                {user?.name?.charAt(0).toUpperCase()}
-              </div>
-              <span className="hidden sm:inline" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user?.name?.split(' ')[0]}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                ...linkStyle,
-                background: 'none',
-                border: '1px solid var(--color-border)',
-                cursor: 'pointer',
-                borderRadius: '8px',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-danger)'; e.currentTarget.style.color = 'var(--color-danger)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
-            >
-              Sign out
-            </button>
-          </>
-        ) : (
-          /* ── Guest state ── */
+              <div className="hidden sm:block" style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 0.25rem', flexShrink: 0 }} />
+              {/* User avatar + name */}
+              <button
+                onClick={() => navigate('/settings')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.35rem 0.75rem',
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '999px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition)',
+                  flexShrink: 0
+                }}
+              >
+                <div style={{
+                  width: '26px', height: '26px', borderRadius: '50%',
+                  background: 'var(--gradient-brand)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.7rem', fontWeight: 800, color: '#fff',
+                }}>
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+                <span className="hidden sm:inline whitespace-nowrap" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user?.name?.split(' ')[0]}
+                </span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="whitespace-nowrap"
+                style={{
+                  ...linkStyle,
+                  background: 'none',
+                  border: '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  borderRadius: '999px',
+                  flexShrink: 0
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-danger)'; e.currentTarget.style.color = 'var(--color-danger)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            /* ── Guest state ── */
           <>
             {!isAuthPage && (
               <div className="hidden md:flex items-center">
@@ -194,8 +200,9 @@ const Navbar = () => {
             >
               Get Started
             </Link>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </nav>
   )

@@ -75,11 +75,38 @@ const getMetrics = async (req, res, next) => {
     const activeSeekers = activeSeekerIds.size;
     
     // Placement Rate: (Students with offers / Total Students) * 100
-    // Alternatively, (Students with offers / Active Seekers) * 100
-    // Let's use Students with offers / Total Students
     const placementRate = totalStudents > 0 
       ? Math.round((studentsWithOffers.size / totalStudents) * 100) 
       : 0;
+
+    // Department Stats Calculation
+    const deptMap = {};
+    students.forEach(s => {
+      const dept = s.department || 'Unknown';
+      if (!deptMap[dept]) {
+        deptMap[dept] = { department: dept, students: 0, applications: 0, offers: 0, studentsWithOffers: 0 };
+      }
+      deptMap[dept].students += 1;
+    });
+
+    applicationStats.forEach(stat => {
+      const student = students.find(s => s._id.toString() === stat._id.toString());
+      if (student) {
+        const dept = student.department || 'Unknown';
+        if (deptMap[dept]) {
+          deptMap[dept].applications += stat.totalApps;
+          deptMap[dept].offers += stat.offers;
+          if (stat.offers > 0) {
+            deptMap[dept].studentsWithOffers += 1;
+          }
+        }
+      }
+    });
+
+    const departmentStats = Object.values(deptMap).map(d => ({
+      ...d,
+      placementRate: d.students > 0 ? Math.round((d.studentsWithOffers / d.students) * 100) : 0
+    }));
 
     // 5. Funnel
     const funnel = {
@@ -134,6 +161,71 @@ const getMetrics = async (req, res, next) => {
         };
       }).slice(0, 10);
 
+    // 7. Advanced Recharts Metrics
+    // a) Monthly Trend (Last 6 months)
+    const monthlyTrendMap = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthName = d.toLocaleString('default', { month: 'short' });
+      monthlyTrendMap[monthName] = { name: monthName, offers: 0, interviews: 0 };
+    }
+    
+    // b) Company Stats
+    const companyStatsMap = {};
+
+    // c) Offer Status Distribution
+    const offerStatusDistributionMap = {
+      'Applied': 0,
+      'Assessment': 0,
+      'Interview': 0,
+      'Offer': 0,
+      'Rejected': 0,
+      'Wishlist': 0
+    };
+
+    // We need raw applications to calculate company stats and monthly trends accurately.
+    const rawApps = await Application.find(appQuery).select('company status updatedAt').lean();
+    
+    rawApps.forEach(app => {
+      // Company stats
+      const comp = app.company || 'Unknown';
+      if (!companyStatsMap[comp]) {
+        companyStatsMap[comp] = { company: comp, studentsSelected: 0 };
+      }
+      if (app.status === 'Offer') {
+        companyStatsMap[comp].studentsSelected += 1;
+      }
+
+      // Offer Distribution
+      if (offerStatusDistributionMap[app.status] !== undefined) {
+        offerStatusDistributionMap[app.status] += 1;
+      }
+
+      // Monthly Trend (using updatedAt for simplicity)
+      if (app.updatedAt) {
+        const d = new Date(app.updatedAt);
+        const monthName = d.toLocaleString('default', { month: 'short' });
+        if (monthlyTrendMap[monthName]) {
+          if (app.status === 'Offer') {
+            monthlyTrendMap[monthName].offers += 1;
+          } else if (app.status === 'Interview') {
+            monthlyTrendMap[monthName].interviews += 1;
+          }
+        }
+      }
+    });
+
+    const companyStats = Object.values(companyStatsMap)
+      .sort((a, b) => b.studentsSelected - a.studentsSelected)
+      .slice(0, 5); // Top 5
+
+    const monthlyTrend = Object.values(monthlyTrendMap);
+
+    const offerStatusDistribution = Object.keys(offerStatusDistributionMap)
+      .filter(k => offerStatusDistributionMap[k] > 0)
+      .map(k => ({ name: k, value: offerStatusDistributionMap[k] }));
+
     res.status(200).json({
       success: true,
       metrics: {
@@ -145,13 +237,19 @@ const getMetrics = async (req, res, next) => {
         applications: totalApplications,
         interviews: totalInterviews,
         offers: totalOffers,
-        placementRate
+        placementRate,
+        departmentStats
       },
       funnel,
       signals: {
         needsFollowUp,
         upcomingInterviews,
         strugglingSeekers
+      },
+      charts: {
+        monthlyTrend,
+        companyStats,
+        offerStatusDistribution
       }
     });
 

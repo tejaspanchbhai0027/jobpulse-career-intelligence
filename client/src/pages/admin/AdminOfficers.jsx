@@ -205,6 +205,29 @@ const AdminOfficers = () => {
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: '0.75rem' }}>
                         <button 
+                          onClick={() => {
+                            const newName = window.prompt("Edit Officer Name:", officer.name);
+                            if (newName && newName !== officer.name) {
+                              api.patch(`/admin/officers/${officer._id}`, { name: newName })
+                                .then(() => fetchOfficers())
+                                .catch(err => alert('Failed to update officer: ' + err.message));
+                            }
+                          }}
+                          disabled={officer._id === user.id}
+                          style={{
+                            background: 'transparent',
+                            color: 'var(--color-brand-primary)',
+                            border: '1px solid var(--color-brand-primary)',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: officer._id === user.id ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button 
                           onClick={() => handleToggleClick(officer._id, officer.isActive)}
                           disabled={officer._id === user.id}
                           style={{

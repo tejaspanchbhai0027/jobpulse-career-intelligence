@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 const VARIANTS = {
   success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)',  color: '#6ee7b7', icon: '✅' },
   error:   { bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.4)',   color: '#fca5a5', icon: '❌' },
-  info:    { bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.4)',  color: '#a5b4fc', icon: 'ℹ️' },
+  info:    { bg: 'rgba(13,115,119,0.2)', border: 'rgba(20,255,236,0.4)',  color: 'var(--color-brand-primary)', icon: 'ℹ️' },
   warning: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)', color: '#fcd34d', icon: '⚡' },
 }
 

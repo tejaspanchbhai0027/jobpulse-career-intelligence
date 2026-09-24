@@ -93,7 +93,7 @@ const inviteOfficer = async (req, res, next) => {
     // Create the officer with a temporary password
     // In a real app, you would send an invite email with a reset password link.
     // Since this is a demo, we will use a generic password.
-    const tempPassword = 'password123';
+    const tempPassword = req.body.password || 'password123';
 
     const newOfficer = await User.create({
       name,
@@ -114,7 +114,7 @@ const inviteOfficer = async (req, res, next) => {
         isActive: newOfficer.isActive,
         createdAt: newOfficer.createdAt
       },
-      message: 'Officer invited successfully. Temporary password is: password123'
+      message: `Officer invited successfully. Password set.`
     });
   } catch (error) {
     next(error);
@@ -129,6 +129,11 @@ const updateOfficer = async (req, res, next) => {
     const institutionId = req.user.institutionId;
     const { isActive, role } = req.body;
     const targetId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(targetId)) {
+      res.status(400);
+      return next(new Error('Invalid officer ID'));
+    }
 
     let query = { _id: targetId, institutionId };
     if (req.user.role === 'PLACEMENT_OFFICER') {
@@ -161,6 +166,8 @@ const updateOfficer = async (req, res, next) => {
     }
 
     if (isActive !== undefined) officer.isActive = isActive;
+    if (req.body.name) officer.name = req.body.name;
+    if (req.body.email) officer.email = req.body.email;
     // Disallow role changes for now to prevent hierarchy violations
     // if (role && allowedRoles.includes(role)) { officer.role = role; }
 
@@ -189,6 +196,11 @@ const removeOfficer = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
     const targetId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(targetId)) {
+      res.status(400);
+      return next(new Error('Invalid officer ID'));
+    }
 
     let query = { _id: targetId, institutionId };
     if (req.user.role === 'PLACEMENT_OFFICER') {
@@ -293,6 +305,11 @@ const getOfficerById = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      return next(new Error('Invalid officer ID'));
+    }
 
     const officer = await User.findOne({ _id: id, institutionId, role: { $in: ['PLACEMENT_OFFICER', 'INSTITUTION_ADMIN'] } })
       .select('_id name email role isActive');

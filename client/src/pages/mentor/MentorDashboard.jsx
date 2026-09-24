@@ -64,17 +64,18 @@ const MentorDashboard = () => {
       </div>
 
       {/* Primary Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         {[
           { label: 'My Students', value: metrics.totalStudents, color: 'var(--color-text-primary)', action: () => navigate('/mentor/students') },
-          { label: 'Active Students', value: metrics.activeStudents, color: '#3b82f6' },
-          { label: 'Applications', value: metrics.applications, color: 'var(--color-text-primary)' },
-          { label: 'Interviews', value: metrics.interviews, color: '#f59e0b', action: () => navigate('/mentor/interviews') },
+          { label: 'Active Pipeline', value: metrics.activeStudents, color: '#3b82f6' },
+          { label: 'Upcoming Interviews', value: upcomingInterviews.length, color: '#f59e0b', action: () => navigate('/mentor/interviews') },
           { label: 'Offers', value: metrics.offers, color: '#10b981' },
-          { label: 'Placed', value: placed, color: '#10b981' }
+          { label: 'Requires Attention', value: metrics.studentsRequiringAttention || 0, color: '#ef4444' },
+          { label: 'Overdue Tasks', value: metrics.studentsWithOverdueTasks || 0, color: '#f43f5e' },
+          { label: 'Open Interventions', value: metrics.openInterventions || 0, color: '#8b5cf6', action: () => navigate('/mentor/interventions') },
         ].map((m, i) => (
-          <div key={i} onClick={m.action} style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', cursor: m.action ? 'pointer' : 'default' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+          <div key={i} onClick={m.action} style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', cursor: m.action ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {m.label}
             </div>
             <div style={{ fontSize: '2.5rem', fontWeight: 900, color: m.color, lineHeight: 1 }}>

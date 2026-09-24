@@ -64,10 +64,18 @@ const OfficerMentorDetails = () => {
             {mentor.department && <span>🏢 {mentor.department}</span>}
           </div>
         </div>
-        <div>
+        <div style={{ display: 'flex', gap: '1rem' }}>
           <div style={{ padding: '0.5rem 1rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--color-text-primary)' }}>{students.length}</span>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Students</span>
+          </div>
+          <div style={{ padding: '0.5rem 1rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: mentor.openInterventions > 0 ? '#f59e0b' : 'var(--color-text-primary)' }}>{mentor.openInterventions || 0}</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Open Issues</span>
+          </div>
+          <div style={{ padding: '0.5rem 1rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: mentor.overdueInterventions > 0 ? '#ef4444' : 'var(--color-text-primary)' }}>{mentor.overdueInterventions || 0}</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Overdue</span>
           </div>
         </div>
       </div>

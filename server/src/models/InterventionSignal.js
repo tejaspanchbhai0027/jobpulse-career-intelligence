@@ -17,22 +17,32 @@ const interventionSignalSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
+      // Expand to support manual issue types
       enum: [
         'NO_ACTIVITY_30_DAYS',
         'HIGH_APPS_NO_INTERVIEWS',
         'UPCOMING_INTERVIEW_NO_PREP',
-        'STALE_RESUME'
+        'STALE_RESUME',
+        'ACADEMIC_CONCERN',
+        'BEHAVIORAL_CONCERN',
+        'OTHER'
       ],
     },
-    category: {
+    priority: {
       type: String,
       required: true,
-      enum: ['HIGH ATTENTION', 'WATCH', 'SKILL GAP'],
+      enum: ['HIGH', 'MEDIUM', 'LOW'],
+      default: 'MEDIUM'
     },
     status: {
       type: String,
-      enum: ['ACTIVE', 'REVIEWED', 'DISMISSED'],
-      default: 'ACTIVE',
+      enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CANCELLED'],
+      default: 'OPEN',
+    },
+    mentorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
     },
     title: {
       type: String,
@@ -48,7 +58,23 @@ const interventionSignalSchema = new mongoose.Schema(
     },
     suggestedSupport: {
       type: String,
-      required: true,
+      default: '',
+    },
+    dueDate: {
+      type: Date,
+      default: null
+    },
+    followUpDate: {
+      type: Date,
+      default: null
+    },
+    mentorNotes: {
+      type: String,
+      default: ''
+    },
+    resolvedAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }
@@ -57,6 +83,6 @@ const interventionSignalSchema = new mongoose.Schema(
 // We want to ensure a student only has one active signal of a specific type at a time.
 // So we can index student + type + status (if ACTIVE).
 interventionSignalSchema.index({ student: 1, type: 1, status: 1 });
-interventionSignalSchema.index({ institutionId: 1, status: 1 });
+interventionSignalSchema.index({ institutionId: 1, status: 1, dueDate: 1 });
 
 module.exports = mongoose.model('InterventionSignal', interventionSignalSchema);

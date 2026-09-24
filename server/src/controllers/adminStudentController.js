@@ -4,6 +4,7 @@ const Application = require('../models/Application');
 const Interview = require('../models/Interview');
 const Resume = require('../models/Resume');
 const MentorFeedback = require('../models/MentorFeedback');
+const InterventionSignal = require('../models/InterventionSignal');
 
 // ── @route  GET /api/admin/students ───────────────────────────────────────────
 // ── @desc   Get paginated and filtered list of students for the institution
@@ -39,8 +40,6 @@ const getStudents = async (req, res, next) => {
 
     if (req.user.role === 'MENTOR') {
       matchStage.mentorId = req.user._id;
-    } else if (req.user.role === 'PLACEMENT_OFFICER') {
-      matchStage.placementOfficerId = req.user._id;
     }
 
     // 2. Text Search
@@ -103,6 +102,28 @@ const getStudents = async (req, res, next) => {
             }
           }
         }
+      },
+      // Lookup interventions
+      {
+        $lookup: {
+          from: 'interventionsignals',
+          localField: '_id',
+          foreignField: 'student',
+          as: 'interventions'
+        }
+      },
+      {
+        $addFields: {
+          openInterventions: {
+            $size: {
+              $filter: {
+                input: '$interventions',
+                as: 'sig',
+                cond: { $in: ['$$sig.status', ['OPEN', 'IN_PROGRESS']] }
+              }
+            }
+          }
+        }
       }
     ];
 
@@ -133,6 +154,7 @@ const getStudents = async (req, res, next) => {
           applicationCount: 1,
           interviewCount: 1,
           offerCount: 1,
+          openInterventions: 1,
           jobSearchGoal: 1,
           privacySettings: 1,
           mentorId: 1,
@@ -156,6 +178,7 @@ const getStudents = async (req, res, next) => {
         applicationCount: priv.applicationProgress !== false ? s.applicationCount : null,
         interviewCount: priv.interviewProgress !== false ? s.interviewCount : null,
         offerCount: priv.interviewProgress !== false ? s.offerCount : null,
+        openInterventions: s.openInterventions || 0,
         jobSearchGoal: priv.careerPreferences !== false ? s.jobSearchGoal : null,
         mentorId: s.mentorId || null,
         createdAt: s.createdAt
@@ -194,6 +217,11 @@ const getStudentById = async (req, res, next) => {
     const institutionId = req.user.institutionId;
     const studentId = req.params.id;
 
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      res.status(400);
+      return next(new Error('Invalid student ID'));
+    }
+
     const query = {
       _id: studentId,
       institutionId,
@@ -203,8 +231,6 @@ const getStudentById = async (req, res, next) => {
 
     if (req.user.role === 'MENTOR') {
       query.mentorId = req.user._id;
-    } else if (req.user.role === 'PLACEMENT_OFFICER') {
-      query.placementOfficerId = req.user._id;
     }
 
     // 1. Fetch user and verify institution binding
@@ -303,10 +329,16 @@ const getStudentById = async (req, res, next) => {
     const interviewCount = applicationsData.filter(a => a.status === 'Interview' || a.status === 'Offer').length;
     const offerCount = applicationsData.filter(a => a.status === 'Offer').length;
 
+    const openInterventions = await InterventionSignal.countDocuments({
+      student: studentId,
+      status: { $in: ['OPEN', 'IN_PROGRESS'] }
+    });
+
     const stats = {
       totalApps,
       interviews: interviewCount,
       offers: offerCount,
+      openInterventions,
       responseRate: totalApps > 0 ? Math.round((interviewCount / totalApps) * 100) : 0,
       interviewRate: totalApps > 0 ? Math.round((interviewCount / totalApps) * 100) : 0 
     };
@@ -412,6 +444,11 @@ const assignMentor = async (req, res, next) => {
     const studentId = req.params.id;
     const { mentorId, placementOfficerId } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      res.status(400);
+      return next(new Error('Invalid student ID'));
+    }
+
     // 1. Verify student
     const student = await User.findOne({
       _id: studentId,
@@ -445,30 +482,20 @@ const assignMentor = async (req, res, next) => {
         role: 'MENTOR'
       };
       
-      // Enforce strict Placement Officer bounds
-      if (req.user.role === 'PLACEMENT_OFFICER') {
-        mentorQuery.placementOfficerId = req.user._id;
-      }
+      
       
       const mentor = await User.findOne(mentorQuery);
       if (!mentor) {
         res.status(400);
         return next(new Error('Invalid mentor ID or mentor does not belong to you'));
       }
-      // If a PO was provided explicitly (Admin bulk assignment), ensure the mentor belongs to them
-      if (placementOfficerId && mentor.placementOfficerId?.toString() !== placementOfficerId) {
-        res.status(400);
-        return next(new Error('The selected mentor does not belong to the selected placement officer'));
-      }
+      
     }
 
     // 4. Update student
     if (placementOfficerId !== undefined) student.placementOfficerId = placementOfficerId || null;
     
-    // Auto-assign the student to the caller PO if they are a PO assigning a mentor
-    if (req.user.role === 'PLACEMENT_OFFICER') {
-      student.placementOfficerId = req.user._id;
-    }
+      
     
     if (mentorId !== undefined) student.mentorId = mentorId || null;
     
@@ -514,10 +541,7 @@ const bulkAssignMentor = async (req, res, next) => {
         res.status(400);
         return next(new Error('Invalid mentor ID'));
       }
-      if (placementOfficerId && mentor.placementOfficerId?.toString() !== placementOfficerId) {
-        res.status(400);
-        return next(new Error('The selected mentor does not belong to the selected placement officer'));
-      }
+      
     }
 
     // Verify all students belong to the institution
@@ -560,6 +584,11 @@ const createFeedback = async (req, res, next) => {
     const mentorId = req.user._id;
     const { content, type, applicationId } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      res.status(400);
+      return next(new Error('Invalid student ID'));
+    }
+
     const studentQuery = { _id: studentId, institutionId, role: 'STUDENT' };
     if (req.user.role === 'MENTOR') {
       studentQuery.mentorId = mentorId;
@@ -593,6 +622,11 @@ const getFeedback = async (req, res, next) => {
     const institutionId = req.user.institutionId;
     const studentId = req.params.id;
 
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      res.status(400);
+      return next(new Error('Invalid student ID'));
+    }
+
     const studentQuery = { _id: studentId, institutionId, role: 'STUDENT' };
     if (req.user.role === 'MENTOR') {
       studentQuery.mentorId = req.user._id;
@@ -619,9 +653,112 @@ const getFeedback = async (req, res, next) => {
   }
 };
 
+const createStudent = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    const { name, email, studentId, department, batch, mentorId } = req.body;
+
+    if (!name || !email || !studentId) {
+      res.status(400);
+      return next(new Error('Name, email, and studentId are required'));
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      res.status(409);
+      return next(new Error('An account with this email already exists'));
+    }
+
+    // If mentorId provided, verify mentor belongs to the same institution
+    if (mentorId) {
+      const mentor = await User.findOne({ _id: mentorId, institutionId, role: 'MENTOR' });
+      if (!mentor) {
+        res.status(400);
+        return next(new Error('Invalid mentor assignment. Mentor not found in this institution.'));
+      }
+    }
+
+    const student = await User.create({
+      name,
+      email,
+      studentId,
+      department,
+      batch,
+      mentorId: mentorId || null,
+      role: 'STUDENT',
+      institutionId,
+      password: 'password123', // Demo fallback, normally would send invite link
+      isActive: true
+    });
+
+    res.status(201).json({ success: true, data: { _id: student._id, name, email, studentId } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateStudent = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    const id = req.params.id;
+    const { name, department, batch, studentId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      return next(new Error('Invalid student ID'));
+    }
+
+    const student = await User.findOne({ _id: id, institutionId, role: 'STUDENT' });
+    if (!student) {
+      res.status(404);
+      return next(new Error('Student not found or access denied'));
+    }
+
+    if (name) student.name = name;
+    if (department) student.department = department;
+    if (batch) student.batch = batch;
+    if (studentId) student.studentId = studentId;
+
+    await student.save();
+
+    res.status(200).json({ success: true, data: student });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deactivateStudent = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      return next(new Error('Invalid student ID'));
+    }
+
+    const student = await User.findOne({ _id: id, institutionId, role: 'STUDENT' });
+    if (!student) {
+      res.status(404);
+      return next(new Error('Student not found or access denied'));
+    }
+
+    // Soft delete
+    student.isActive = false;
+    await student.save();
+
+    res.status(200).json({ success: true, message: 'Student deactivated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStudents,
   getStudentById,
+  createStudent,
+  updateStudent,
+  deactivateStudent,
   assignMentor,
   bulkAssignMentor,
   createFeedback,

@@ -17,7 +17,9 @@ const getApplications = async (req, res, next) => {
       filter.status = req.query.status;
     }
 
-    const applications = await Application.find(filter).sort({ updatedAt: -1 });
+    const applications = await Application.find(filter)
+      .populate('resumeId', 'name version targetRole')
+      .sort({ updatedAt: -1 });
 
     // Compute possibleGhostJob on read (not stored)
     const now = new Date()
@@ -49,7 +51,7 @@ const getApplications = async (req, res, next) => {
 const createApplication = asyncHandler(async (req, res) => {
   const {
     company, role, jobUrl, status, dateApplied, notes, contact,
-    type, closingDate, isPriority, salary, source, resumeVersion, jobDescription, needsFollowUp,
+    type, closingDate, isPriority, salary, source, resumeVersion, resumeId, jobDescription, needsFollowUp,
   } = req.body;
 
   const application = await Application.create({
@@ -67,6 +69,7 @@ const createApplication = asyncHandler(async (req, res) => {
     salary:        salary        ?? '',
     source:        source        ?? '',
     resumeVersion: resumeVersion ?? '',
+    resumeId:      resumeId      || null,
     jobDescription: jobDescription ?? '',
     needsFollowUp: needsFollowUp ?? false,
   });
@@ -112,7 +115,7 @@ const updateApplication = asyncHandler(async (req, res) => {
   const previousIsGhosted = application.isGhosted;
 
   // Only allow updating safe fields
-  const allowedFields = ['company', 'role', 'jobUrl', 'status', 'dateApplied', 'notes', 'contact', 'needsFollowUp', 'lastFollowUpAt', 'type', 'closingDate', 'isPriority', 'salary', 'source', 'resumeVersion', 'isGhosted', 'ghostedAt'];
+  const allowedFields = ['company', 'role', 'jobUrl', 'status', 'dateApplied', 'notes', 'contact', 'needsFollowUp', 'lastFollowUpAt', 'type', 'closingDate', 'isPriority', 'salary', 'source', 'resumeVersion', 'resumeId', 'isGhosted', 'ghostedAt', 'nextAction', 'followUpDate', 'followUpStatus', 'lastContactedDate', 'followUpNotes'];
   allowedFields.forEach((field) => {
     if (req.body[field] !== undefined) {
       application[field] = req.body[field];

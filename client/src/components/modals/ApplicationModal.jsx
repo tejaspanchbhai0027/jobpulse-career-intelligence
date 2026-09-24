@@ -11,10 +11,10 @@ const TYPES    = ['Full-time', 'Internship', 'Part-time', 'Contract']
 const SOURCES  = ['LinkedIn', 'Referral', 'Company Website', 'Naukri', 'Indeed', 'Other']
 
 const TYPE_COLORS = {
-  'Full-time':  { bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.35)', text: '#a5b4fc' },
+  'Full-time':  { bg: 'rgba(13,115,119,0.2)', border: 'rgba(13,115,119,0.5)', text: '#14FFEC' },
   'Internship': { bg: 'rgba(6,182,212,0.12)',  border: 'rgba(6,182,212,0.35)',  text: '#67e8f9' },
   'Part-time':  { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)', text: '#fcd34d' },
-  'Contract':   { bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.35)', text: '#c4b5fd' },
+  'Contract':   { bg: 'rgba(20,255,236,0.1)', border: 'rgba(20,255,236,0.3)', text: '#14FFEC' },
 }
 
 const initialForm = {
@@ -30,8 +30,14 @@ const initialForm = {
   source:        '',
   contact:       '',
   resumeVersion: '',
+  resumeId:      '',
   jobDescription:'',
   notes:         '',
+  nextAction:    '',
+  followUpDate:  '',
+  followUpStatus:'Not Required',
+  lastContactedDate: '',
+  followUpNotes: '',
 }
 
 const inputStyle = {
@@ -60,6 +66,7 @@ const labelStyle = {
 
 const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) => {
   const isEdit = !!application
+  const [viewMode, setViewMode]   = useState(false)
   const [form, setForm]           = useState(initialForm)
   const [error, setError]         = useState('')
   const [loading, setLoading]     = useState(false)
@@ -113,12 +120,19 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
         source:        application.source        || '',
         contact:       application.contact       || '',
         resumeVersion: application.resumeVersion || '',
+        resumeId:      (application.resumeId && application.resumeId._id) ? application.resumeId._id : application.resumeId || '',
         jobDescription:application.jobDescription|| '',
         notes:         application.notes         || '',
+        nextAction:    application.nextAction    || '',
+        followUpDate:  application.followUpDate ? new Date(application.followUpDate).toISOString().split('T')[0] : '',
+        followUpStatus:application.followUpStatus|| 'Not Required',
+        lastContactedDate: application.lastContactedDate ? new Date(application.lastContactedDate).toISOString().split('T')[0] : '',
+        followUpNotes: application.followUpNotes || '',
       })
     } else {
       setForm({ ...initialForm, dateApplied: new Date().toISOString().split('T')[0] })
     }
+    setViewMode(!!application)
     setError('')
     setActiveTab('details')
     setJdAnalysis(null)
@@ -222,7 +236,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
 
   const focusStyle = (e) => {
     e.target.style.borderColor = 'var(--color-brand-primary)'
-    e.target.style.boxShadow   = '0 0 0 3px rgba(99,102,241,0.15)'
+    e.target.style.boxShadow   = '0 0 0 3px rgba(20,255,236,0.15)'
   }
   const blurStyle = (e) => {
     e.target.style.borderColor = 'var(--color-border)'
@@ -272,6 +286,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '0.6rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', padding: '3px', width: '100%' }}>
                 {[
                   { id: 'details', label: '📋 Details' }, 
+                  { id: 'followup', label: '🎯 Next Action' },
                   { id: 'interviews', label: `🎙️ Interviews${interviews.length ? ` (${interviews.length})` : ''}` },
                   { id: 'intelligence', label: '🧠 Intelligence' },
                   { id: 'advisor', label: `📝 Advisor Notes${feedback.length ? ` (${feedback.length})` : ''}` }
@@ -337,6 +352,113 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
 
           {/* ── Details Tab ────────────────────────────────────────────────── */}
           {activeTab === 'details' && (
+            viewMode ? (
+              <div className="flex flex-col gap-5">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{form.company}</h3>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>{form.role}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode(false)}
+                    style={{
+                      padding: '0.5rem 1rem', background: 'var(--color-brand-primary)',
+                      color: 'var(--color-bg)', borderRadius: '8px', fontSize: '0.85rem',
+                      fontWeight: 700, border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    ✎ Edit Details
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {form.status && (
+                    <div>
+                      <span style={labelStyle}>Status</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{form.status}</div>
+                    </div>
+                  )}
+                  {form.type && (
+                    <div>
+                      <span style={labelStyle}>Type</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{form.type}</div>
+                    </div>
+                  )}
+                  {form.dateApplied && (
+                    <div>
+                      <span style={labelStyle}>Date Applied</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{new Date(form.dateApplied).toLocaleDateString()}</div>
+                    </div>
+                  )}
+                  {form.closingDate && (
+                    <div>
+                      <span style={labelStyle}>Deadline</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{new Date(form.closingDate).toLocaleDateString()}</div>
+                    </div>
+                  )}
+                  {form.salary && (
+                    <div>
+                      <span style={labelStyle}>Salary / Stipend</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{form.salary}</div>
+                    </div>
+                  )}
+                  {form.source && (
+                    <div>
+                      <span style={labelStyle}>Applied Via</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{form.source}</div>
+                    </div>
+                  )}
+                  {form.contact && (
+                    <div>
+                      <span style={labelStyle}>Contact</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{form.contact}</div>
+                    </div>
+                  )}
+                  {form.resumeId ? (
+                    <div>
+                      <span style={labelStyle}>Resume Used</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>
+                        {resumes.find(r => r._id === form.resumeId)?.name || 'Linked Resume'} 
+                        {resumes.find(r => r._id === form.resumeId)?.version && ` (${resumes.find(r => r._id === form.resumeId)?.version})`}
+                      </div>
+                    </div>
+                  ) : form.resumeVersion ? (
+                    <div>
+                      <span style={labelStyle}>Resume Used</span>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{form.resumeVersion}</div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {form.jobUrl && (
+                  <div>
+                    <span style={labelStyle}>Job URL</span>
+                    <a href={form.jobUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem', color: 'var(--color-brand-primary)', textDecoration: 'none' }}>
+                      {form.jobUrl} ↗
+                    </a>
+                  </div>
+                )}
+
+                {form.jobDescription && (
+                  <div>
+                    <span style={labelStyle}>Job Description</span>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', background: 'var(--color-surface-overlay)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--color-border)', whiteSpace: 'pre-wrap' }}>
+                      {form.jobDescription}
+                    </div>
+                  </div>
+                )}
+
+                {form.notes && (
+                  <div>
+                    <span style={labelStyle}>Notes</span>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', background: 'var(--color-surface-overlay)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--color-border)', whiteSpace: 'pre-wrap' }}>
+                      {form.notes}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
             <>
               {/* Row 1: Company + Role */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -431,7 +553,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
                     whiteSpace: 'nowrap', transition: 'var(--transition)',
                     flexShrink: 0,
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.borderColor = 'var(--color-brand-primary)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(13,115,119,0.2)'; e.currentTarget.style.borderColor = 'var(--color-brand-primary)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface-overlay)'; e.currentTarget.style.borderColor = 'var(--color-border)' }}
                 >
                   Open ↗
@@ -527,20 +649,21 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
                 <div>
                   <label style={labelStyle}>Resume Used</label>
                   <select
-                    name="resumeVersion" value={form.resumeVersion} onChange={handleChange}
+                    name="resumeId" value={form.resumeId} onChange={handleChange}
                     style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}
                   >
                     <option value="">— Select a Resume —</option>
                     {resumes.map(r => (
-                      <option key={r._id} value={r.name}>
-                        {r.name} {r.isDefault ? '(Default)' : ''}
+                      <option key={r._id} value={r._id}>
+                        {r.name} {r.version ? `(${r.version})` : ''} {r.isDefault ? '[Default]' : ''}
                       </option>
                     ))}
-                    {/* Fallback for legacy free-text values that don't match active resumes */}
-                    {form.resumeVersion && !resumes.some(r => r.name === form.resumeVersion) && (
-                      <option value={form.resumeVersion}>Legacy: {form.resumeVersion}</option>
-                    )}
                   </select>
+                  {!form.resumeId && form.resumeVersion && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                      Legacy Resume: {form.resumeVersion}
+                    </div>
+                  )}
                 </div>
 
                 {/* Job Description & AI Insights */}
@@ -569,8 +692,8 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
 
                   {/* JD Analysis Results */}
                   {jdAnalysis && (
-                    <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '8px' }}>
-                      <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#a5b4fc', marginBottom: '0.5rem' }}>✨ JD Analysis</h4>
+                    <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(13,115,119,0.1)', border: '1px solid rgba(13,115,119,0.3)', borderRadius: '8px' }}>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#14FFEC', marginBottom: '0.5rem' }}>✨ JD Analysis</h4>
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                         <p><strong style={{color:'var(--color-text-secondary)'}}>Role:</strong> {jdAnalysis.role}</p>
                         <p><strong style={{color:'var(--color-text-secondary)'}}>Experience:</strong> {jdAnalysis.experience}</p>
@@ -589,9 +712,9 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
 
                   {/* Resume Match Results */}
                   {resumeMatchData && (
-                    <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '8px' }}>
+                    <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(13,115,119,0.1)', border: '1px solid rgba(13,115,119,0.3)', borderRadius: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#c4b5fd' }}>✨ Resume Match</h4>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#14FFEC' }}>✨ Resume Match</h4>
                         <span style={{ fontSize: '1.1rem', fontWeight: 800, color: resumeMatchData.matchScore > 75 ? '#10b981' : resumeMatchData.matchScore > 50 ? '#f59e0b' : '#ef4444' }}>
                           {resumeMatchData.matchScore}%
                         </span>
@@ -599,7 +722,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                         <div style={{ color: '#6ee7b7' }}><strong>Strong:</strong> {resumeMatchData.strong?.join(', ')}</div>
                         <div style={{ color: '#fca5a5', marginTop: '0.4rem' }}><strong>Missing:</strong> {resumeMatchData.missing?.join(', ')}</div>
-                        <div style={{ color: '#a5b4fc', marginTop: '0.4rem' }}><strong>Suggested Keywords:</strong> {resumeMatchData.suggestedKeywords?.join(', ')}</div>
+                        <div style={{ color: '#14FFEC', marginTop: '0.4rem' }}><strong>Suggested Keywords:</strong> {resumeMatchData.suggestedKeywords?.join(', ')}</div>
                       </div>
                     </div>
                   )}
@@ -623,6 +746,79 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
             )}
           </div>
           </>
+          )
+          )}
+          
+          {/* ── Next Action Tab ────────────────────────────────────────────── */}
+          {activeTab === 'followup' && (
+            <div className="flex flex-col gap-5">
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '0.5rem' }}>Next Action & Follow-up</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>Track what needs to happen next for this application.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label style={labelStyle}>Next Action</label>
+                  <input
+                    type="text"
+                    name="nextAction"
+                    value={form.nextAction}
+                    onChange={handleChange}
+                    placeholder="e.g. Email recruiter for update"
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Follow-up Date</label>
+                  <input
+                    type="date"
+                    name="followUpDate"
+                    value={form.followUpDate}
+                    onChange={handleChange}
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Status</label>
+                  <select
+                    name="followUpStatus"
+                    value={form.followUpStatus}
+                    onChange={handleChange}
+                    style={inputStyle}
+                  >
+                    <option value="Not Required">Not Required</option>
+                    <option value="Planned">Planned</option>
+                    <option value="Due">Due</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label style={labelStyle}>Last Contacted</label>
+                  <input
+                    type="date"
+                    name="lastContactedDate"
+                    value={form.lastContactedDate}
+                    onChange={handleChange}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+
+              <div className="col-span-2 mt-2">
+                <label style={labelStyle}>Follow-up Notes</label>
+                <textarea
+                  name="followUpNotes"
+                  value={form.followUpNotes}
+                  onChange={handleChange}
+                  placeholder="Notes about your communication..."
+                  style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }}
+                />
+              </div>
+            </div>
           )}
 
           {/* ── Interviews Tab (edit mode only) ──────────────────────────── */}
@@ -788,7 +984,7 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
           {/* Footer buttons */}
           <div className="mt-6 pt-4 border-t border-[var(--color-border)] flex gap-3 justify-between items-center sticky bottom-0 bg-[var(--color-surface)] pb-safe">
             <div>
-              {isEdit && (
+              {isEdit && !viewMode && (
                 <button
                   type="button"
                   onClick={() => {
@@ -815,25 +1011,27 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
                 className="btn-secondary"
                 style={{ fontSize: '0.875rem', padding: '0.65rem 1.25rem' }}
               >
-                Cancel
+                {viewMode ? 'Close' : 'Cancel'}
               </button>
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={loading}
-                style={{
-                  fontSize: '0.875rem', padding: '0.65rem 1.5rem',
-                  opacity: loading ? 0.75 : 1, cursor: loading ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '0.5rem',
-                }}
-              >
-                {loading ? (
-                  <>
-                    <span style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
-                    Saving…
-                  </>
-                ) : isEdit ? '✓ Save Changes' : '＋ Add Application'}
-              </button>
+              {!viewMode && (
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={loading}
+                  style={{
+                    fontSize: '0.875rem', padding: '0.65rem 1.5rem',
+                    opacity: loading ? 0.75 : 1, cursor: loading ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <span style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+                      Saving…
+                    </>
+                  ) : isEdit ? '✓ Save Changes' : '＋ Add Application'}
+                </button>
+              )}
             </div>
           </div>
         </form>

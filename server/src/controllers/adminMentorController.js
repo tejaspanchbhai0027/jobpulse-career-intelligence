@@ -42,6 +42,104 @@ const getMentors = async (req, res, next) => {
   }
 };
 
+const mongoose = require('mongoose');
+
+const createMentor = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    const { name, email, placementOfficerId } = req.body;
+
+    if (!name || !email) {
+      res.status(400);
+      return next(new Error('Name and email are required'));
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      res.status(409);
+      return next(new Error('An account with this email already exists'));
+    }
+
+    if (placementOfficerId) {
+      const officer = await User.findOne({ _id: placementOfficerId, institutionId, role: 'PLACEMENT_OFFICER' });
+      if (!officer) {
+        res.status(400);
+        return next(new Error('Invalid placement officer assignment. Officer not found in this institution.'));
+      }
+    }
+
+    const mentor = await User.create({
+      name,
+      email,
+      placementOfficerId: placementOfficerId || null,
+      role: 'MENTOR',
+      institutionId,
+      password: 'password123',
+      isActive: true
+    });
+
+    res.status(201).json({ success: true, data: { _id: mentor._id, name, email } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateMentor = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    const id = req.params.id;
+    const { name, placementOfficerId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      return next(new Error('Invalid mentor ID'));
+    }
+
+    const mentor = await User.findOne({ _id: id, institutionId, role: 'MENTOR' });
+    if (!mentor) {
+      res.status(404);
+      return next(new Error('Mentor not found or access denied'));
+    }
+
+    if (name) mentor.name = name;
+    if (placementOfficerId !== undefined) mentor.placementOfficerId = placementOfficerId || null;
+
+    await mentor.save();
+
+    res.status(200).json({ success: true, data: mentor });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deactivateMentor = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      return next(new Error('Invalid mentor ID'));
+    }
+
+    const mentor = await User.findOne({ _id: id, institutionId, role: 'MENTOR' });
+    if (!mentor) {
+      res.status(404);
+      return next(new Error('Mentor not found or access denied'));
+    }
+
+    mentor.isActive = false;
+    await mentor.save();
+
+    res.status(200).json({ success: true, message: 'Mentor deactivated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
-  getMentors
+  getMentors,
+  createMentor,
+  updateMentor,
+  deactivateMentor
 };

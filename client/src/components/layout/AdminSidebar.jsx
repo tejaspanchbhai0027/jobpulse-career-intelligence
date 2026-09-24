@@ -3,16 +3,13 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const links = [
     { to: '/admin/dashboard', label: 'Placement Command Center', icon: '📊' },
-    { to: '/admin/students', label: 'Students', icon: '🎓' },
-    { to: '/admin/officers', label: 'Placement Officers', icon: '👨‍💼' },
-    { to: '/admin/mentors', label: 'Mentors', icon: '👨‍🏫' },
-    { to: '/admin/interventions', label: 'Intervention Radar', icon: '⚠️' },
-    { to: '/admin/analytics', label: 'Analytics', icon: '📈' },
-    { to: '/admin/institution', label: 'Institution Settings', icon: '⚙️' },
+    { to: '/admin/placement-drives', label: 'Placement Officers', icon: '👥' },
+    { to: '/admin/placement-reports', label: 'Reports', icon: '📈' },
+    { to: '/admin/institution', label: 'Settings', icon: '⚙️' },
   ];
 
   return (
@@ -90,6 +87,33 @@ const AdminSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
         ))}
       </nav>
       
+      
+      {/* Logout Button */}
+      <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)' }}>
+        <button
+          onClick={logout}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.75rem',
+            padding: '0.6rem 0.75rem',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            color: 'var(--color-danger)',
+            background: 'rgba(239,68,68,0.1)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <span style={{ fontSize: '1.1rem' }}>🚪</span>
+          Logout
+        </button>
+      </div>
+
       {/* Footer Branding */}
       <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
         Placement Portal v1.0

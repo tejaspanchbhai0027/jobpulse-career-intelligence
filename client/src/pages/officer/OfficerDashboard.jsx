@@ -54,13 +54,20 @@ const OfficerDashboard = () => {
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       
       {/* Header */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-text-primary)', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
-          Command Center
-        </h1>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.05rem', margin: 0 }}>
-          Placement intelligence and operational overview for {user?.institution?.name || 'your institution'}.
-        </p>
+      <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-text-primary)', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
+            Command Center
+          </h1>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.05rem', margin: 0 }}>
+            Placement intelligence and operational overview for {user?.institution?.name || 'your institution'}.
+          </p>
+        </div>
+        {metrics?.lastUpdated && (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+            Last updated: {new Date(metrics.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        )}
       </div>
 
       {/* Primary Metrics */}
@@ -69,7 +76,7 @@ const OfficerDashboard = () => {
           { label: 'Total Students', value: metrics.totalStudents, color: 'var(--color-brand-primary)' },
           { label: 'Active Job Seekers', value: metrics.activeStudents, color: '#3b82f6' },
           { label: 'Applications', value: metrics.applications, color: 'var(--color-text-primary)' },
-          { label: 'Interviews', value: metrics.interviews, color: '#f59e0b' },
+          { label: 'Upcoming Interviews', value: metrics.upcomingInterviews, color: '#f59e0b' },
           { label: 'Offers', value: metrics.offers, color: '#10b981' },
           { label: 'Placement Rate', value: `${metrics.placementRate}%`, color: '#10b981' },
           { label: 'Needs Attention', value: metrics.needsAttention, color: metrics.needsAttention > 0 ? '#ef4444' : 'var(--color-text-primary)', action: () => navigate('/officer/interventions') }
@@ -122,7 +129,7 @@ const OfficerDashboard = () => {
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                       Action: <span style={{ color: 'var(--color-brand-primary)', fontWeight: 600 }}>{sig.action}</span>
                     </div>
-                    <button onClick={() => navigate(`/officer/students/${sig.student._id}`)} style={{ padding: '0.4rem 1rem', background: 'var(--color-surface-overlay)', border: '1px solid var(--color-border)', borderRadius: '6px', color: 'var(--color-text-primary)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>View Student</button>
+                    <button onClick={() => navigate(sig.route || `/officer/students/${sig.student._id}`)} style={{ padding: '0.4rem 1rem', background: 'var(--color-surface-overlay)', border: '1px solid var(--color-border)', borderRadius: '6px', color: 'var(--color-text-primary)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>View Details</button>
                   </div>
                 </div>
               ))

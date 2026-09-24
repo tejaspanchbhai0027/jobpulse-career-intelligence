@@ -90,7 +90,18 @@ export const useAllInterviews = () => {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  return { interviews, loading, refetch: fetchAll }
+  const updateInterview = useCallback(async (id, formData) => {
+    const { data } = await api.put(`/interviews/${id}`, formData)
+    setInterviews(prev => prev.map(i => i._id === id ? { ...i, ...data.data } : i))
+    return data.data
+  }, [])
+
+  const deleteInterview = useCallback(async (id) => {
+    await api.delete(`/interviews/${id}`)
+    setInterviews(prev => prev.filter(i => i._id !== id))
+  }, [])
+
+  return { interviews, loading, refetch: fetchAll, updateInterview, deleteInterview }
 }
 
 export default useInterviews

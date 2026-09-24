@@ -48,3 +48,8 @@ client/.vite/
 *.tgz
 *.cache
 .npm/
+
+# ── Resumes & Seeds ──────────────────────────────────────────────────────────
+server/storage/resumes/
+server/scripts/seed*.js
+server/seed-*.js

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const SuperAdminDashboard = () => {
-  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -13,9 +12,6 @@ const SuperAdminDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         const res = await api.get('/super-admin/dashboard/metrics');
-        // The API returns { data: { totalInstitutions, totalStudents, totalPlacementOfficers, totalMentors, recentInstitutions } }
-        // BUT wait, looking at my updated controller, I changed the response of `getDashboardMetrics` slightly.
-        // Wait, looking closely at the previous code for superAdminController.js, I replaced getPlatformMetrics with getDashboardMetrics and it returns those 5 keys inside data.
         setData(res.data.data);
       } catch (err) {
         setError('Failed to load platform metrics.');
@@ -26,100 +22,122 @@ const SuperAdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  if (loading) {
-    return <div style={{ padding: '2rem' }}>Loading platform metrics...</div>;
-  }
+  if (loading) return <div style={{ padding: '2rem' }}>Loading platform metrics...</div>;
+  if (error) return <div style={{ padding: '2rem', color: 'var(--color-danger)' }}>{error}</div>;
 
-  if (error) {
-    return <div style={{ padding: '2rem', color: 'var(--color-danger)' }}>{error}</div>;
-  }
+  const { metrics, platformActivity } = data;
 
-  const { totalInstitutions, totalStudents, totalPlacementOfficers, totalMentors, recentInstitutions } = data;
-
-  const statCardStyle = {
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: '12px',
-    padding: '1.5rem',
-    display: 'flex',
-    flexDirection: 'column',
-    textDecoration: 'none',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    transition: 'all 0.2s ease',
-    cursor: 'pointer'
-  };
+  const PIE_COLORS = ['#3B82F6', '#1E293B'];
+  const pieData = [
+    { name: 'Active', value: metrics.activeInstitutions || 0 },
+    { name: 'Inactive', value: (metrics.totalInstitutions || 0) - (metrics.activeInstitutions || 0) }
+  ];
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>Platform Administration</h1>
-        <p style={{ color: 'var(--color-text-secondary)', margin: '0.5rem 0 0 0' }}>Welcome back, {user?.name}</p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-        <Link to="/super-admin/institutions" style={statCardStyle} className="hover-card">
-          <div style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#3B82F6', background: 'rgba(59, 130, 246, 0.1)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>🏫</div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1, letterSpacing: '-0.02em' }}>{totalInstitutions}</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 600, marginTop: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Institutions</div>
-        </Link>
-        <div style={{...statCardStyle, cursor: 'default'}} className="hover-card">
-          <div style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#10B981', background: 'rgba(16, 185, 129, 0.1)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>🎓</div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1, letterSpacing: '-0.02em' }}>{totalStudents}</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 600, marginTop: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Students</div>
+    <div style={{ width: '100%' }}>
+      {/* Simple Clean Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 300, color: 'var(--color-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>Command Center</h1>
+          <p style={{ color: 'var(--color-text-secondary)', margin: '0.25rem 0 0 0', fontSize: '0.95rem', fontWeight: 500 }}>Real-time overview of the JobPulse platform operations.</p>
         </div>
-        <div style={{...statCardStyle, cursor: 'default'}} className="hover-card">
-          <div style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#F59E0B', background: 'rgba(245, 158, 11, 0.1)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>👨‍💼</div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1, letterSpacing: '-0.02em' }}>{totalPlacementOfficers}</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 600, marginTop: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Placement Officers</div>
-        </div>
-        <div style={{...statCardStyle, cursor: 'default'}} className="hover-card">
-          <div style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#8B5CF6', background: 'rgba(139, 92, 246, 0.1)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}>👨‍🏫</div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1, letterSpacing: '-0.02em' }}>{totalMentors}</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 600, marginTop: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mentors</div>
+        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 500 }}>
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
       </div>
 
-      <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Recent Institutions</h2>
-          <Link to="/super-admin/institutions" style={{ textDecoration: 'none', color: '#3B82F6', fontWeight: 600, fontSize: '0.9rem' }}>
-            View All &rarr;
-          </Link>
-        </div>
+      {/* Essential Core Metrics */}
+      <h2 style={{ fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>Platform Population</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <MetricCard title="Total Institutions" value={metrics.totalInstitutions} highlight={true} />
+        <MetricCard title="Total Students" value={metrics.totalStudents} />
+        <MetricCard title="Placement Officers" value={metrics.totalOfficers || 0} />
+        <MetricCard title="Mentors" value={metrics.totalMentors} />
+      </div>
 
-        {recentInstitutions && recentInstitutions.length > 0 ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <th style={{ padding: '1rem 0.5rem', color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Institution Name</th>
-                <th style={{ padding: '1rem 0.5rem', color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Code</th>
-                <th style={{ padding: '1rem 0.5rem', color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentInstitutions.map(inst => (
-                <tr key={inst._id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '1rem 0.5rem', fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>
-                    <Link to={`/super-admin/institutions/${inst._id}`} style={{ color: '#3B82F6', textDecoration: 'none' }}>
-                      {inst.name}
-                    </Link>
-                  </td>
-                  <td style={{ padding: '1rem 0.5rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 600 }}>{inst.code}</td>
-                  <td style={{ padding: '1rem 0.5rem', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-                    {new Date(inst.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-            No institutions have been created yet.
+      {/* Engagement Metrics */}
+      <h2 style={{ fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>Recruitment Engagement</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <MetricCard title="Active Drives" value={metrics.totalActiveDrives || 0} />
+        <MetricCard title="Total Applications" value={metrics.totalApplications} />
+        <MetricCard title="Total Interviews" value={metrics.totalInterviews} />
+        <MetricCard title="Placed Students" value={metrics.totalPlacedStudents || 0} highlight={true} highlightColor="#10B981" />
+      </div>
+
+      {/* Charts Section */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* Institution Status Chart */}
+        <div style={{ background: 'var(--color-surface)', borderRadius: '16px', padding: '2rem', border: '1px solid var(--color-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 1.5rem 0' }}>Institution Status</h3>
+          <div style={{ position: 'relative', height: '220px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} innerRadius={70} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none">
+                  {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1 }}>{metrics.activeInstitutions}</div>
+              <div style={{ fontSize: '0.85rem', color: '#3B82F6', fontWeight: 600 }}>Active</div>
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Activity Chart */}
+        <div style={{ background: 'var(--color-surface)', borderRadius: '16px', padding: '2rem', border: '1px solid var(--color-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Application Volume (Last 7 Days)</h3>
+          </div>
+          <div style={{ height: '220px' }}>
+            {platformActivity && platformActivity.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={platformActivity}>
+                  <defs>
+                    <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+                  <XAxis dataKey="date" stroke="var(--color-text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: 'none', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                  <Area type="monotone" dataKey="applications" name="Applications" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorVolume)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
+                Not enough activity data to show.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
+
+const MetricCard = ({ title, value, highlight = false, highlightColor = '#3B82F6' }) => (
+  <div style={{ 
+    background: 'var(--color-surface)', 
+    border: highlight ? `1px solid ${highlightColor}` : '1px solid var(--color-border)', 
+    borderRadius: '16px', 
+    padding: '2rem 1.5rem', 
+    position: 'relative',
+    overflow: 'hidden',
+    boxShadow: highlight ? `0 4px 20px ${highlightColor}15` : '0 4px 20px rgba(0,0,0,0.02)'
+  }}>
+    {highlight && (
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: highlightColor }}></div>
+    )}
+    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: highlight ? highlightColor : 'var(--color-text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      {title}
+    </div>
+    <div style={{ fontSize: '2.5rem', fontWeight: 300, color: 'var(--color-text-primary)', lineHeight: 1, letterSpacing: '-0.03em' }}>
+      {value.toLocaleString()}
+    </div>
+  </div>
+);
 
 export default SuperAdminDashboard;

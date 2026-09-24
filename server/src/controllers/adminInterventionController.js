@@ -131,13 +131,20 @@ const getInterventions = async (req, res, next) => {
 const updateInterventionStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
+    const signalId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(signalId)) {
+      res.status(400);
+      return next(new Error('Invalid signal ID'));
+    }
+
     if (!['ACTIVE', 'REVIEWED', 'DISMISSED'].includes(status)) {
       res.status(400);
       return next(new Error('Invalid status'));
     }
 
     const signal = await InterventionSignal.findOneAndUpdate(
-      { _id: req.params.id, institutionId: req.user.institutionId },
+      { _id: signalId, institutionId: req.user.institutionId },
       { status },
       { new: true }
     );

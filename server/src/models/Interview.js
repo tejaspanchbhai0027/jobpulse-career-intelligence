@@ -54,6 +54,16 @@ const interviewSchema = new mongoose.Schema(
       wentWell: { type: String, default: '' },
       wasDifficult: { type: String, default: '' },
       wouldChange: { type: String, default: '' }
+    },
+    // Phase 3: Interview Preparation Workspace
+    preparation: {
+      notes: { type: String, default: '' },
+      checklist: [{ 
+        text: { type: String, required: true }, 
+        completed: { type: Boolean, default: false } 
+      }],
+      questions: [{ type: String }],
+      topics: [{ type: String }]
     }
   },
   { timestamps: true }

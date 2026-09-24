@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Skeleton from '../../components/ui/Skeleton';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -77,7 +78,7 @@ const AdminDashboard = () => {
     return <div style={{ padding: '2rem', color: 'var(--color-danger)' }}>Error: {error}</div>;
   }
 
-  const { metrics, funnel, signals } = data;
+  const { metrics, funnel, signals, charts } = data;
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -171,6 +172,98 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* ── CHARTS ────────────────────────────────────────────── */}
+      {charts && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginTop: '2.5rem' }}>
+          
+          {/* MONTHLY TREND */}
+          <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+            <h3 style={{ marginBottom: '1.5rem', fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '1.05rem' }}>Monthly Trend</h3>
+            <div style={{ width: '100%', height: '300px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={charts.monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-text-secondary)" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '8px', color: 'var(--color-text-primary)' }} />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                  <Line type="monotone" name="Offers" dataKey="offers" stroke="var(--color-success)" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" name="Interviews" dataKey="interviews" stroke="var(--color-brand-primary)" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* TOP RECRUITERS */}
+          <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+            <h3 style={{ marginBottom: '1.5rem', fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '1.05rem' }}>Top Recruiters</h3>
+            <div style={{ width: '100%', height: '300px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts.companyStats}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="company" stroke="var(--color-text-secondary)" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-text-secondary)" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{fill: 'var(--color-bg)'}} contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '8px', color: 'var(--color-text-primary)' }} />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                  <Bar dataKey="studentsSelected" name="Students Selected" fill="var(--color-brand-primary)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* DEPARTMENT STATS */}
+      {metrics.departmentStats && metrics.departmentStats.length > 0 && (
+        <div style={{ marginTop: '2.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '1rem' }}>Department Breakdown</h2>
+          <div style={{ 
+            background: 'var(--color-surface)', 
+            border: '1px solid var(--color-border)', 
+            borderRadius: '12px', 
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-card)'
+          }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ background: 'var(--color-surface-overlay)', borderBottom: '1px solid var(--color-border)' }}>
+                  <tr>
+                    <th style={thStyle}>Department</th>
+                    <th style={thStyle}>Students</th>
+                    <th style={thStyle}>Applications</th>
+                    <th style={thStyle}>Offers</th>
+                    <th style={thStyle}>Placement Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.departmentStats.map((dept, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td style={tdStyle}>{dept.department}</td>
+                      <td style={tdStyle}>{dept.students}</td>
+                      <td style={tdStyle}>{dept.applications}</td>
+                      <td style={tdStyle}>{dept.offers}</td>
+                      <td style={tdStyle}>
+                        <span style={{
+                          background: 'rgba(22, 163, 74, 0.1)',
+                          color: 'var(--color-success)',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700
+                        }}>
+                          {dept.placementRate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -295,5 +388,19 @@ const SignalGroup = ({ title, count, items, renderItem }) => (
     </div>
   </div>
 );
+
+const thStyle = {
+  padding: '16px',
+  fontWeight: 600,
+  color: 'var(--color-text-secondary)',
+  fontSize: '0.9rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em'
+};
+
+const tdStyle = {
+  padding: '16px',
+  color: 'var(--color-text-primary)'
+};
 
 export default AdminDashboard;

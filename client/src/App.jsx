@@ -10,7 +10,13 @@ import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
+import Applications from './pages/Applications'
+import Interviews from './pages/Interviews'
+import Resume from './pages/Resume'
 import Intelligence from './pages/Intelligence'
+import Tasks from './pages/Tasks'
+import CareerReadiness from './pages/CareerReadiness'
+import Opportunities from './pages/Opportunities'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 import AdminRoute from './components/AdminRoute'
@@ -58,6 +64,12 @@ import OfficerInterviews from './pages/officer/OfficerInterviews'
 import OfficerInterventions from './pages/officer/OfficerInterventions'
 import OfficerAnalytics from './pages/officer/OfficerAnalytics'
 import OfficerIntelligence from './pages/officer/OfficerIntelligence'
+import AdminPlacementDrives from './pages/admin/AdminPlacementDrives'
+import AdminPlacementReports from './pages/admin/AdminPlacementReports'
+import AdminPlacementVerification from './pages/admin/AdminPlacementVerification'
+import AdminPlacementAudit from './pages/admin/AdminPlacementAudit'
+import OfficerPlacementDrives from './pages/officer/OfficerPlacementDrives'
+import PlacementDrives from './pages/PlacementDrives'
 import { useLocation } from 'react-router-dom'
 import './index.css'
 
@@ -117,7 +129,14 @@ function AppRoutes() {
 
         {/* Protected */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
+        <Route path="/interviews" element={<ProtectedRoute><Interviews /></ProtectedRoute>} />
+        <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+        <Route path="/resume" element={<ProtectedRoute><Resume /></ProtectedRoute>} />
         <Route path="/intelligence" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
+        <Route path="/readiness" element={<ProtectedRoute><CareerReadiness /></ProtectedRoute>} />
+        <Route path="/opportunities" element={<ProtectedRoute><Opportunities /></ProtectedRoute>} />
+        <Route path="/placement-drives" element={<ProtectedRoute><PlacementDrives /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
         {/* Admin Portal */}
@@ -131,8 +150,13 @@ function AppRoutes() {
           <Route path="/admin/officers/:id" element={<AdminRoute><AdminOfficerDetails /></AdminRoute>} />
           <Route path="/admin/mentors" element={<AdminRoute><AdminMentors /></AdminRoute>} />
           <Route path="/admin/interventions" element={<AdminRoute><AdminInterventions /></AdminRoute>} />
+          <Route path="/admin/intelligence" element={<AdminRoute><AdminIntelligence /></AdminRoute>} />
           <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
           <Route path="/admin/institution" element={<AdminRoute><AdminInstitution /></AdminRoute>} />
+          <Route path="/admin/placement-drives" element={<AdminRoute><AdminPlacementDrives /></AdminRoute>} />
+          <Route path="/admin/placement-reports" element={<AdminRoute><AdminPlacementReports /></AdminRoute>} />
+          <Route path="/admin/placement-verification" element={<AdminRoute><AdminPlacementVerification /></AdminRoute>} />
+          <Route path="/admin/placement-audit" element={<AdminRoute><AdminPlacementAudit /></AdminRoute>} />
           <Route path="/admin/settings" element={<Navigate to="/admin/institution" replace />} />
           <Route path="/admin" element={
             <AdminRoute>
@@ -178,6 +202,7 @@ function AppRoutes() {
           <Route path="/officer/interventions" element={<OfficerRoute><OfficerInterventions /></OfficerRoute>} />
           <Route path="/officer/analytics" element={<OfficerRoute><OfficerAnalytics /></OfficerRoute>} />
           <Route path="/officer/intelligence" element={<OfficerRoute><OfficerIntelligence /></OfficerRoute>} />
+          <Route path="/officer/placement-drives" element={<OfficerRoute><OfficerPlacementDrives /></OfficerRoute>} />
           <Route path="/officer" element={<Navigate to="/officer/dashboard" replace />} />
         </Route>
 

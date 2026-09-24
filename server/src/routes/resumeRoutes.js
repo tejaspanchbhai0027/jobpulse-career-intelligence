@@ -8,7 +8,7 @@ const {
   uploadResume,
   getResume,
   setDefaultResume,
-  renameResume,
+  updateResume,
   deleteResume
 } = require('../controllers/resumeController');
 
@@ -50,7 +50,7 @@ router.route('/')
 
 router.route('/:id')
   .get(getResume)
-  .patch(renameResume)
+  .put(updateResume)
   .delete(deleteResume);
 
 router.patch('/:id/default', setDefaultResume);

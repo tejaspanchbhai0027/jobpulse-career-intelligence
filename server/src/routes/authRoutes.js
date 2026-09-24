@@ -11,7 +11,7 @@ const { registerSchema, loginSchema, updateSettingsSchema } = require('../valida
 // Protects against brute-force login and registration flooding.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15,
+  max: process.env.NODE_ENV === 'development' ? 100 : 15,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many auth attempts, please try again in 15 minutes.' },

@@ -9,11 +9,18 @@ const OfficerInterviews = () => {
   const [filter, setFilter] = useState('upcoming');
   const navigate = useNavigate();
 
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   useEffect(() => {
     const fetchInterviews = async () => {
+      setLoading(true);
       try {
-        const { data } = await api.get('/officer/interviews');
+        const { data } = await api.get('/officer/interviews', {
+          params: { page, limit: 25 }
+        });
         setInterviews(data.data || []);
+        setTotalPages(data.totalPages || 1);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch interviews');
       } finally {
@@ -21,7 +28,7 @@ const OfficerInterviews = () => {
       }
     };
     fetchInterviews();
-  }, []);
+  }, [page]);
 
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>Loading interviews...</div>;
@@ -126,6 +133,44 @@ const OfficerInterviews = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem' }}>
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: page === 1 ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+              borderRadius: '6px',
+              cursor: page === 1 ? 'not-allowed' : 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Previous
+          </button>
+          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9rem' }}>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: page === totalPages ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+              borderRadius: '6px',
+              cursor: page === totalPages ? 'not-allowed' : 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

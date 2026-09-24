@@ -2,6 +2,7 @@ const Institution = require('../models/Institution');
 const User = require('../models/User');
 const Application = require('../models/Application');
 const SystemSettings = require('../models/SystemSettings');
+const PlacementDrive = require('../models/PlacementDrive');
 
 // ── @route  GET /api/super-admin/dashboard/metrics ───────────────────────────
 // ── @desc   Get platform-level metrics
@@ -16,7 +17,8 @@ const getPlatformMetrics = async (req, res, next) => {
       totalApplications,
       totalInterviews,
       totalOffers,
-      recentInstitutions
+      recentInstitutions,
+      totalActiveDrives
     ] = await Promise.all([
       Institution.countDocuments(),
       Institution.countDocuments({ updatedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
@@ -25,7 +27,8 @@ const getPlatformMetrics = async (req, res, next) => {
       Application.countDocuments(),
       Application.countDocuments({ status: 'Interview' }),
       Application.countDocuments({ status: 'Offer' }),
-      Institution.find().sort({ createdAt: -1 }).limit(5)
+      Institution.find().sort({ createdAt: -1 }).limit(5),
+      PlacementDrive.countDocuments({ status: { $in: ['PUBLISHED', 'REGISTRATION_OPEN', 'IN_PROGRESS'] } })
     ]);
 
     // Platform Activity (last 7 days of applications)
@@ -59,7 +62,9 @@ const getPlatformMetrics = async (req, res, next) => {
           totalMentors,
           totalApplications,
           totalInterviews,
-          totalOffers
+          totalOffers,
+          totalActiveDrives,
+          totalPlacedStudents: totalOffers // For now, Offers == Placed Students
         },
         recentInstitutions,
         platformActivity
@@ -336,12 +341,108 @@ const sendTestEmailRoute = async (req, res, next) => {
   }
 };
 
+// ── @route  PATCH /api/super-admin/institutions/:id ───────────────────────────
+// ── @desc   Update an institution's details
+// ── @access Private (Super Admin)
+const updateInstitution = async (req, res, next) => {
+  try {
+    const institutionId = req.params.id;
+    const updates = req.body;
+    
+    // Prevent modification of the institution code and isActive through this route
+    delete updates.code;
+    delete updates.isActive;
+
+    const institution = await Institution.findById(institutionId);
+    if (!institution) {
+      res.status(404);
+      return next(new Error('Institution not found'));
+    }
+
+    const updatedInstitution = await Institution.findByIdAndUpdate(
+      institutionId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Institution updated successfully',
+      data: updatedInstitution
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  DELETE /api/super-admin/institutions/:id ─────────────────────────
+// ── @desc   Hard delete an institution and cascade delete all its related data
+// ── @access Private (Super Admin)
+const deleteInstitution = async (req, res, next) => {
+  try {
+    const institutionId = req.params.id;
+
+    const institution = await Institution.findById(institutionId);
+    if (!institution) {
+      res.status(404);
+      return next(new Error('Institution not found'));
+    }
+
+    // 1. Find all users belonging to this institution
+    const users = await User.find({ institutionId });
+    const userIds = users.map(u => u._id);
+
+    if (userIds.length > 0) {
+      // 2. Delete all records referencing these users
+      const Application = require('../models/Application');
+      const Interview = require('../models/Interview');
+      const Task = require('../models/Task');
+      const Resume = require('../models/Resume');
+      const InterventionSignal = require('../models/InterventionSignal');
+      const MentorFeedback = require('../models/MentorFeedback');
+
+      await Application.deleteMany({ user: { $in: userIds } });
+      await Interview.deleteMany({ user: { $in: userIds } });
+      await Task.deleteMany({ user: { $in: userIds } });
+      await Resume.deleteMany({ user: { $in: userIds } });
+      await InterventionSignal.deleteMany({ user: { $in: userIds } });
+      await MentorFeedback.deleteMany({
+        $or: [
+          { mentorId: { $in: userIds } },
+          { studentId: { $in: userIds } }
+        ]
+      });
+
+      // 3. Delete the users
+      await User.deleteMany({ institutionId });
+    }
+
+    // 4. Delete institution specific data
+    const PlacementDrive = require('../models/PlacementDrive');
+    const PlacementAudit = require('../models/PlacementAudit');
+    await PlacementDrive.deleteMany({ institutionId });
+    if (PlacementAudit) await PlacementAudit.deleteMany({ institutionId });
+
+    // 5. Finally, delete the institution itself
+    await Institution.findByIdAndDelete(institutionId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Institution and all associated data have been permanently deleted'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getPlatformMetrics,
   getInstitutions,
   createInstitution,
   getInstitutionById,
   updateInstitutionStatus,
+  updateInstitution,
+  deleteInstitution,
   createInstitutionAdmin,
   getSystemSettings,
   sendTestEmailRoute

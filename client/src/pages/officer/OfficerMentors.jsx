@@ -13,12 +13,14 @@ const OfficerMentors = () => {
   const [newMentor, setNewMentor] = useState({ name: '', email: '', password: '' });
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
+  
+  const [search, setSearch] = useState('');
 
   const navigate = useNavigate();
 
   const fetchMentors = async () => {
     try {
-      const { data } = await api.get('/officer/mentors');
+      const { data } = await api.get('/officer/mentors', { params: { search } });
       setMentors(data.data || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch mentors');
@@ -28,8 +30,11 @@ const OfficerMentors = () => {
   };
 
   useEffect(() => {
-    fetchMentors();
-  }, []);
+    const delayDebounceFn = setTimeout(() => {
+      fetchMentors();
+    }, 300);
+    return () => clearTimeout(delayDebounceFn);
+  }, [search]);
 
   const handleAddMentor = async (e) => {
     e.preventDefault();
@@ -119,11 +124,28 @@ const OfficerMentors = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>My Mentors</h1>
           <p style={{ color: 'var(--color-text-secondary)', margin: '0.5rem 0 0 0' }}>Manage the mentors assigned to you.</p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          style={{ background: 'var(--color-brand-primary)', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>+</span> Add Mentor
-        </button>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text-primary)',
+              width: '250px'
+            }}
+          />
+          <button 
+            onClick={() => setShowAddModal(true)}
+            style={{ background: 'var(--color-brand-primary)', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>+</span> Add Mentor
+          </button>
+        </div>
       </div>
 
       {mentors.length === 0 ? (
@@ -144,6 +166,8 @@ const OfficerMentors = () => {
                   <th style={thStyle}>Applications</th>
                   <th style={thStyle}>Interviews</th>
                   <th style={thStyle}>Offers</th>
+                  <th style={thStyle}>Open Issues</th>
+                  <th style={thStyle}>Overdue</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,6 +203,12 @@ const OfficerMentors = () => {
                     </td>
                     <td style={{ padding: '1rem 1.5rem', color: '#10b981', fontWeight: 600 }}>
                       {mentor.offers}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: mentor.openInterventions > 0 ? '#f59e0b' : 'var(--color-text-secondary)', fontWeight: mentor.openInterventions > 0 ? 700 : 500 }}>
+                      {mentor.openInterventions || 0}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: mentor.overdueInterventions > 0 ? '#ef4444' : 'var(--color-text-secondary)', fontWeight: mentor.overdueInterventions > 0 ? 700 : 500 }}>
+                      {mentor.overdueInterventions || 0}
                     </td>
                   </tr>
                 ))}

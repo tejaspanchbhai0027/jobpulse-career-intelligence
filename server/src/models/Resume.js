@@ -41,6 +41,11 @@ const resumeSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    notes: {
+      type: String,
+      default: '',
+      maxlength: [1000, 'Notes cannot exceed 1000 characters'],
+    },
     extractedText: {
       type: String,
       default: '',

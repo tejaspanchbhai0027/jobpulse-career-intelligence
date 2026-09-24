@@ -223,6 +223,71 @@ const addQuestion = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Update Interview Preparation
+// @route   PUT /api/interviews/:id/preparation
+// @access  Private
+const updateInterviewPreparation = asyncHandler(async (req, res) => {
+  const interview = await Interview.findOne({ _id: req.params.id, user: req.user._id });
+  
+  if (!interview) {
+    res.status(404);
+    throw new Error('Interview not found');
+  }
+
+  const { notes, checklist, questions, topics } = req.body;
+  
+  if (!interview.preparation) {
+    interview.preparation = {};
+  }
+  
+  if (notes !== undefined) interview.preparation.notes = notes;
+  if (checklist !== undefined) interview.preparation.checklist = checklist;
+  if (questions !== undefined) interview.preparation.questions = questions;
+  if (topics !== undefined) interview.preparation.topics = topics;
+
+  await interview.save();
+  res.status(200).json({ success: true, data: interview });
+});
+
+// @desc    Generate Interview Prep Kit (AI)
+// @route   POST /api/interviews/:id/generate-prep
+// @access  Private
+const generateInterviewPrepKit = asyncHandler(async (req, res) => {
+  const interview = await Interview.findOne({ _id: req.params.id, user: req.user._id }).populate('application');
+  
+  if (!interview) {
+    res.status(404);
+    throw new Error('Interview not found');
+  }
+  
+  if (!interview.application || !interview.application.jobDescription) {
+    res.status(400);
+    throw new Error('Associated application does not have a job description to analyze.');
+  }
+
+  const { generateInterviewPrep } = require('../services/aiService');
+  const prepData = await generateInterviewPrep(interview.application.jobDescription, interview.application.role);
+
+  // Merge generated data safely
+  if (!interview.preparation) interview.preparation = {};
+  
+  // Merge checklist without overwriting existing checked items
+  const existingChecklistTexts = new Set(interview.preparation.checklist?.map(c => c.text) || []);
+  const newChecklist = [...(interview.preparation.checklist || [])];
+  prepData.checklist.forEach(item => {
+    if (!existingChecklistTexts.has(item.text)) {
+      newChecklist.push(item);
+    }
+  });
+  
+  interview.preparation.checklist = newChecklist;
+  interview.preparation.questions = Array.from(new Set([...(interview.preparation.questions || []), ...prepData.questions]));
+  interview.preparation.topics = Array.from(new Set([...(interview.preparation.topics || []), ...prepData.topics]));
+
+  await interview.save();
+  res.status(200).json({ success: true, data: interview.preparation });
+});
+
 module.exports = {
   getInterviews,
   getUpcomingInterviews,
@@ -231,5 +296,7 @@ module.exports = {
   deleteInterview,
   submitReflection,
   getQuestionBank,
-  addQuestion
+  addQuestion,
+  updateInterviewPreparation,
+  generateInterviewPrepKit,
 };

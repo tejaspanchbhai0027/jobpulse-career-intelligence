@@ -30,9 +30,21 @@ const AdminMentors = () => {
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: '0 0 0.5rem 0' }}>Mentors Overview</h1>
-        <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>View all mentors assigned to placement officers within your institution.</p>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: '0 0 0.5rem 0' }}>Mentors Overview</h1>
+          <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>View all mentors assigned to placement officers within your institution.</p>
+        </div>
+        <button className="btn-primary" onClick={() => {
+          const name = window.prompt("Enter Mentor Name:");
+          if (!name) return;
+          const email = window.prompt("Enter Mentor Email:");
+          if (!email) return;
+          
+          api.post('/admin/mentors', { name, email })
+            .then(() => fetchMentors())
+            .catch(err => alert('Failed to create mentor: ' + (err.response?.data?.message || err.message)));
+        }}>+ Add Mentor</button>
       </div>
 
       {error && (
@@ -57,12 +69,13 @@ const AdminMentors = () => {
                 <th style={thStyle}>Placement Officer</th>
                 <th style={thStyle}>Students Assigned</th>
                 <th style={thStyle}>Status</th>
+                <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {mentors.length === 0 ? (
                 <tr>
-                  <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
                     No mentors have been added yet.
                   </td>
                 </tr>
@@ -92,6 +105,32 @@ const AdminMentors = () => {
                       }}>
                         {mentor.isActive ? 'Active' : 'Inactive'}
                       </span>
+                    </td>
+                    <td style={tdStyle}>
+                      <button 
+                        style={{ marginRight: '0.5rem', background: 'transparent', border: 'none', color: 'var(--color-brand-primary)', cursor: 'pointer', fontWeight: 600 }}
+                        onClick={() => {
+                          const newName = window.prompt("Edit Mentor Name:", mentor.name);
+                          if (newName && newName !== mentor.name) {
+                            api.patch(`/admin/mentors/${mentor._id}`, { name: newName })
+                              .then(() => fetchMentors())
+                              .catch(err => alert('Failed to update mentor: ' + err.message));
+                          }
+                        }}
+                      >Edit</button>
+                      
+                      {mentor.isActive && (
+                        <button 
+                          style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontWeight: 600 }}
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to deactivate this mentor?')) {
+                              api.delete(`/admin/mentors/${mentor._id}`)
+                                .then(() => fetchMentors())
+                                .catch(err => alert('Failed to deactivate mentor: ' + err.message));
+                            }
+                          }}
+                        >Deactivate</button>
+                      )}
                     </td>
                   </tr>
                 ))

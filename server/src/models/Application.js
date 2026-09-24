@@ -64,6 +64,31 @@ const applicationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // ── Phase 4 — Next Action & Follow-Up Fields ───────────────────────────
+    nextAction: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: [100, 'Next action cannot exceed 100 characters'],
+    },
+    followUpDate: {
+      type: Date,
+      default: null,
+    },
+    followUpStatus: {
+      type: String,
+      enum: ['Planned', 'Due', 'Completed', 'Not Required'],
+      default: 'Not Required',
+    },
+    lastContactedDate: {
+      type: Date,
+      default: null,
+    },
+    followUpNotes: {
+      type: String,
+      default: '',
+      maxlength: [2000, 'Follow-up notes cannot exceed 2000 characters'],
+    },
     // ── Phase 6 — Extended Application Fields ──────────────────────────────
     type: {
       type: String,
@@ -98,6 +123,17 @@ const applicationSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    resumeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Resume',
+      default: null,
+    },
+    // ── Phase 8 — Placement Drive Link ─────────────────────────────────────
+    placementDriveId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PlacementDrive',
+      default: null,
+    },
     // ── Ghost detection fields ─────────────────────────────────────────────
     isGhosted: {
       type: Boolean,
@@ -128,6 +164,7 @@ applicationSchema.index({ user: 1, isGhosted: 1 });
 applicationSchema.index({ user: 1, isPriority: 1 });
 applicationSchema.index({ user: 1, closingDate: 1 });
 applicationSchema.index({ user: 1, dateApplied: -1 });
+applicationSchema.index({ placementDriveId: 1 });
 
 module.exports = mongoose.model('Application', applicationSchema);
 module.exports.STATUSES = STATUSES;

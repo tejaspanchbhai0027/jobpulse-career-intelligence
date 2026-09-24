@@ -20,7 +20,7 @@ const AdminLayout = () => {
 
       <div className="flex-1 flex flex-col min-w-0">
         <AdminHeader setIsMobileMenuOpen={setIsMobileMenuOpen} />
-        <main className="mt-[70px] md:ml-[260px] p-4 md:p-8 min-h-[calc(100vh-70px)] w-full md:w-[calc(100%-260px)] overflow-x-hidden">
+        <main className="admin-main-content">
           <Outlet />
         </main>
       </div>

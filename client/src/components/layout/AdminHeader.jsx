@@ -43,6 +43,8 @@ const AdminHeader = ({ setIsMobileMenuOpen }) => {
     if (path.includes('/analytics')) return 'Analytics';
     if (path.includes('/institution')) return 'Institution Settings';
     if (path.includes('/team')) return 'Team Management';
+    if (path.includes('/placement-drives')) return 'Placement Offers / Drives';
+    if (path.includes('/placement-reports')) return 'Reports';
     return 'Placement Command Center';
   };
 

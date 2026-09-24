@@ -137,19 +137,26 @@ const setDefaultResume = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Rename resume
-// @route   PATCH /api/resumes/:id
+// @desc    Update resume metadata
+// @route   PUT /api/resumes/:id
 // @access  Private
-const renameResume = asyncHandler(async (req, res) => {
-  const { name } = req.body;
-  if (!name) {
+const updateResume = asyncHandler(async (req, res) => {
+  const { name, version, targetRole, notes } = req.body;
+  
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (version !== undefined) updateData.version = version;
+  if (targetRole !== undefined) updateData.targetRole = targetRole;
+  if (notes !== undefined) updateData.notes = notes;
+
+  if (Object.keys(updateData).length === 0) {
     res.status(400);
-    throw new Error('Name is required');
+    throw new Error('No valid fields provided for update');
   }
 
   const resume = await Resume.findOneAndUpdate(
     { _id: req.params.id, user: req.user._id },
-    { name },
+    updateData,
     { new: true, runValidators: true }
   );
 
@@ -193,6 +200,6 @@ module.exports = {
   uploadResume,
   getResume,
   setDefaultResume,
-  renameResume,
+  updateResume,
   deleteResume
 };

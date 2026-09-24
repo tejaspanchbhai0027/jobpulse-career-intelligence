@@ -1,60 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import AddRecommendationModal from '../../components/mentor/AddRecommendationModal';
+import CreateInterventionModal from '../../components/mentor/CreateInterventionModal';
 
 const MentorStudentProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [student, setStudent] = useState(null);
-  const [applications, setApplications] = useState([]);
-  const [interviews, setInterviews] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
+  const [data, setData] = useState(null);
+  const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('overview');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  useEffect(() => {
-    const fetchStudentProfile = async () => {
+  const fetchStudentProfile = async () => {
       try {
-        const [profileRes, recsRes] = await Promise.all([
-          api.get(`/mentor/students/${id}`),
-          api.get(`/mentor/students/${id}/recommendations`)
+        const [overviewRes, activityRes] = await Promise.all([
+          api.get(`/mentor/students/${id}/overview`),
+          api.get(`/mentor/students/${id}/activity`)
         ]);
-        setStudent(profileRes.data.data.student);
-        setApplications(profileRes.data.data.applications?.data || []);
-        
-        // Extract interviews from applications
-        const ints = [];
-        (profileRes.data.data.applications?.data || []).forEach(app => {
-           if (app.interviews) {
-              app.interviews.forEach(i => ints.push({ ...i, application: app }));
-           }
-        });
-        setInterviews(ints.sort((a,b) => new Date(b.scheduledAt) - new Date(a.scheduledAt)));
-        
-        setRecommendations(recsRes.data.data || []);
+        setData(overviewRes.data.data);
+        setTimeline(activityRes.data.data || []);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load student profile');
       } finally {
         setLoading(false);
       }
-    };
+  };
+
+  useEffect(() => {
     fetchStudentProfile();
   }, [id]);
 
-  const handleStatusChange = async (recId, newStatus) => {
-    try {
-      await api.patch(`/mentor/recommendations/${recId}/status`, { status: newStatus });
-      setRecommendations(recs => recs.map(r => r._id === recId ? { ...r, status: newStatus } : r));
-    } catch (err) {
-      alert('Failed to update status');
-    }
-  };
-
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>Loading student profile...</div>;
-  if (error || !student) return (
+  if (error || !data) return (
     <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
       <div style={{ padding: '1.5rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
         {error || 'Student not found'}
@@ -65,255 +43,168 @@ const MentorStudentProfile = () => {
     </div>
   );
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'applications', label: 'Applications' },
-    { id: 'interviews', label: 'Interviews' },
-    { id: 'snapshot', label: 'Career Snapshot' },
-    { id: 'mentorship', label: 'Mentorship' }
-  ];
+  const { student, condition, pipeline, currentTasks, upcomingInterviews } = data;
 
-  const tabStyle = (isActive) => ({
-    padding: '1rem 1.5rem',
-    fontWeight: isActive ? 700 : 600,
-    color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
-    borderBottom: isActive ? '3px solid var(--color-brand-primary)' : '3px solid transparent',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    background: 'transparent',
-    borderTop: 'none',
-    borderLeft: 'none',
-    borderRight: 'none'
-  });
-
-  const isActive = student.applicationCount > 0;
-  const stage = student.offerCount > 0 ? 'Placed' : student.interviewCount > 0 ? 'Interviewing' : isActive ? 'Applying' : 'Inactive';
+  const getConditionColor = (status) => {
+    switch (status) {
+      case 'ACTIVE': return '#10b981';
+      case 'NEEDS_ATTENTION': return '#ef4444';
+      case 'INACTIVE': return '#f59e0b';
+      case 'INTERVIEW_PREPARATION_REQUIRED': return '#3b82f6';
+      case 'FOLLOW_UP_REQUIRED': return '#8b5cf6';
+      default: return 'var(--color-text-secondary)';
+    }
+  };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-      <button onClick={() => navigate('/mentor/students')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1.5rem', fontWeight: 600 }}>
-        <span>←</span> Back to Students
-      </button>
+    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <button onClick={() => navigate('/mentor/students')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+          <span>←</span> Back to Students
+        </button>
+        <button 
+          onClick={() => setShowCreateModal(true)}
+          style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          + Create Action Plan
+        </button>
+      </div>
 
-      {/* Header Card */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', padding: '2rem', marginBottom: '2rem', display: 'flex', gap: '2rem', alignItems: 'center' }}>
+      {/* A. Student Overview */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', padding: '2rem', marginBottom: '2rem', display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'var(--gradient-brand)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 800 }}>
           {student.name.charAt(0)}
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: '300px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.2 }}>{student.name}</h1>
-            <span style={{ padding: '0.4rem 0.8rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 700 }}>
-              Stage: <span style={{ color: 'var(--color-brand-primary)' }}>{stage}</span>
+            <span style={{ padding: '0.4rem 0.8rem', background: 'var(--color-surface-raised)', border: `1px solid ${getConditionColor(condition.status)}`, color: getConditionColor(condition.status), borderRadius: '999px', fontSize: '0.85rem', fontWeight: 700 }}>
+              {condition.status.replace(/_/g, ' ')}
             </span>
           </div>
-          <div style={{ color: 'var(--color-text-secondary)', marginTop: '0.3rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ color: 'var(--color-text-secondary)', marginTop: '0.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <span>📧 {student.email}</span>
             {student.department && <span>🏢 {student.department}</span>}
             {student.batch && <span>📅 Class of {student.batch}</span>}
           </div>
-        </div>
-      </div>
-
-      {/* Quick Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-        <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--color-brand-primary)' }}>{student.applicationCount === null ? '🔒' : student.applicationCount || 0}</div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Applications</div>
-        </div>
-        <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f59e0b' }}>{student.interviewCount === null ? '🔒' : student.interviewCount || 0}</div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Interviews</div>
-        </div>
-        <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#10b981' }}>{student.offerCount === null ? '🔒' : student.offerCount || 0}</div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Offers</div>
-        </div>
-        <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-text-primary)' }}>{new Date(student.createdAt).toLocaleDateString()}</div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Last Activity</div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '2rem', overflowX: 'auto' }}>
-        {tabs.map(tab => (
-          <button key={tab.id} style={tabStyle(activeTab === tab.id)} onClick={() => setActiveTab(tab.id)}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gap: '2rem' }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem 0' }}>Career Target</h3>
-            {student.jobSearchGoal ? (
-              <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>{student.jobSearchGoal}</p>
-            ) : (
-              <p style={{ color: 'var(--color-text-muted)', margin: 0, fontStyle: 'italic' }}>Not specified or private 🔒</p>
-            )}
+          <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+            <strong>Condition Reason:</strong> {condition.reason}
           </div>
-          
-          <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem 0' }}>Recent Applications</h3>
-            {student.applicationCount === null ? (
-              <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Student has hidden their application progress.</div>
-            ) : applications.length === 0 ? (
-              <div style={{ color: 'var(--color-text-muted)' }}>No applications recorded yet.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {applications.slice(0, 5).map(app => (
-                  <div key={app._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+        
+        {/* B. Career Pipeline */}
+        <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.5rem 0' }}>Career Pipeline</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--color-text-primary)' }}>{pipeline.total}</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Total Applications</div>
+            </div>
+            <div style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: '#3b82f6' }}>{pipeline.interview}</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Interviews</div>
+            </div>
+            <div style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: '#10b981' }}>{pipeline.offer}</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Offers</div>
+            </div>
+            <div style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>{pipeline.rejected}</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Rejections</div>
+            </div>
+          </div>
+        </div>
+
+        {/* C. Resume and Readiness */}
+        <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.5rem 0' }}>Career Readiness</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ position: 'relative', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: `conic-gradient(var(--color-brand-primary) ${student.profileCompletion}%, var(--color-border) 0)` }}>
+              <div style={{ position: 'absolute', width: '68px', height: '68px', background: 'var(--color-surface)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 800 }}>
+                {student.profileCompletion}%
+              </div>
+            </div>
+            <div>
+              <div style={{ fontWeight: 600 }}>Profile Completeness</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
+                {student.profileCompletion === 100 ? 'Fully prepared' : 'Missing key profile information'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* D. Current Tasks */}
+        <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.5rem 0' }}>Pending Tasks</h2>
+          {currentTasks.length === 0 ? (
+            <div style={{ color: 'var(--color-text-muted)' }}>No pending tasks.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {currentTasks.map(task => {
+                const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+                return (
+                  <div key={task._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--color-bg)', borderRadius: '8px', borderLeft: `3px solid ${isOverdue ? '#ef4444' : 'var(--color-brand-primary)'}` }}>
                     <div>
-                      <div style={{ fontWeight: 600 }}>{app.role}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{app.company}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{task.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: isOverdue ? '#ef4444' : 'var(--color-text-secondary)' }}>
+                        {task.dueDate ? `Due: ${new Date(task.dueDate).toLocaleDateString()}` : 'No deadline'}
+                        {isOverdue && ' (OVERDUE)'}
+                      </div>
                     </div>
-                    <div style={{ fontWeight: 700, color: app.status === 'Offer' ? '#10b981' : 'var(--color-text-secondary)' }}>{app.status}</div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'var(--color-surface-raised)', color: 'var(--color-text-secondary)', alignSelf: 'flex-start' }}>{task.priority}</div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'applications' && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
-          {applications.length === 0 ? (
-            <div style={{ color: 'var(--color-text-muted)' }}>No applications found.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {applications.map(app => (
-                <div key={app._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{app.role}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{app.company} • Applied on {new Date(app.appliedDate || app.createdAt).toLocaleDateString()}</div>
-                  </div>
-                  <div style={{ fontWeight: 700 }}>{app.status}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
-      )}
 
-      {activeTab === 'interviews' && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
-          {interviews.length === 0 ? (
-            <div style={{ color: 'var(--color-text-muted)' }}>No interviews found.</div>
+        {/* E. Activity Timeline */}
+        <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.5rem 0' }}>Activity Timeline</h2>
+          {timeline.length === 0 ? (
+            <div style={{ color: 'var(--color-text-muted)' }}>No recent activity.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {interviews.map(int => (
-                <div key={int._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'var(--color-surface-overlay)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 10, bottom: 10, left: 7, width: '2px', background: 'var(--color-border)' }}></div>
+              {timeline.slice(0, 10).map((event, i) => (
+                <div key={i} style={{ display: 'flex', gap: '1rem', position: 'relative', zIndex: 1 }}>
+                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'var(--color-surface)', border: '2px solid var(--color-brand-primary)', flexShrink: 0, marginTop: '2px' }}></div>
                   <div>
-                    <div style={{ fontWeight: 600 }}>{int.application?.company}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{int.application?.role} • Round {int.round || 1}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--color-brand-primary)' }}>{new Date(int.scheduledAt).toLocaleDateString()}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{new Date(int.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{event.details}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(event.date).toLocaleString()}</div>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      )}
 
-      {activeTab === 'snapshot' && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '1.5rem' }}>
-           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem 0' }}>Career Preferences</h3>
-           {student.jobSearchGoal ? (
-             <div style={{ color: 'var(--color-text-secondary)' }}>
-               <p><strong>Goal:</strong> {student.jobSearchGoal}</p>
-             </div>
-           ) : (
-             <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Career preferences are private or not set.</div>
-           )}
+        {/* F. Recommended Mentor Action */}
+        <div style={{ background: 'var(--gradient-brand)', borderRadius: '16px', padding: '1.5rem', color: 'white', gridColumn: '1 / -1' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 0.5rem 0' }}>Mentor Action Plan</h2>
+          <p style={{ margin: 0, fontSize: '1.05rem', lineHeight: 1.5, opacity: 0.9 }}>
+            {condition.status === 'ACTIVE' && 'Student is progressing well. Check in periodically.'}
+            {condition.status === 'NEEDS_ATTENTION' && 'Intervention required. Please review their overdue tasks or open interventions and schedule a follow-up immediately.'}
+            {condition.status === 'INACTIVE' && 'Student has gone cold. Reach out to schedule a planning session and assign an initial task.'}
+            {condition.status === 'INTERVIEW_PREPARATION_REQUIRED' && 'Reach out to conduct a mock interview or share preparation materials for their upcoming interview.'}
+            {condition.status === 'FOLLOW_UP_REQUIRED' && 'Pipeline is stalled. Help the student identify new opportunities or refine their application strategy.'}
+            {condition.status === 'NO_DATA' && 'Guide the student to upload their resume and fill out their initial career profile.'}
+          </p>
         </div>
-      )}
 
-      {activeTab === 'mentorship' && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', padding: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
-              Mentorship Workspace
-            </h2>
-            <button onClick={() => setShowAddModal(true)} className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
-              + Add Goal / Action
-            </button>
-          </div>
+      </div>
 
-          <div>
-            {recommendations.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem 0', background: 'var(--color-surface-overlay)', borderRadius: '8px' }}>
-                No mentorship notes or goals yet.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {recommendations.map(rec => (
-                  <div key={rec._id} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1.5rem', background: 'var(--color-surface-overlay)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.3rem' }}>
-                          <span style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '1.05rem' }}>{rec.type}</span>
-                          <span style={{
-                            padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase',
-                            background: rec.priority === 'Urgent' ? 'rgba(239,68,68,0.1)' : rec.priority === 'Important' ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.1)',
-                            color: rec.priority === 'Urgent' ? '#ef4444' : rec.priority === 'Important' ? '#f59e0b' : '#3b82f6'
-                          }}>
-                            {rec.priority}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                          {new Date(rec.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
-                        </div>
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{
-                          padding: '0.3rem 0.8rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
-                          background: rec.status === 'COMPLETED' ? 'rgba(16,185,129,0.1)' : rec.status === 'ACKNOWLEDGED' ? 'rgba(59,130,246,0.1)' : 'var(--color-bg)',
-                          color: rec.status === 'COMPLETED' ? '#10b981' : rec.status === 'ACKNOWLEDGED' ? '#3b82f6' : 'var(--color-text-secondary)'
-                        }}>
-                          {rec.status}
-                        </div>
-
-                        {rec.status !== 'COMPLETED' && (
-                          <button
-                            onClick={() => handleStatusChange(rec._id, 'COMPLETED')}
-                            style={{
-                              background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
-                              padding: '0.3rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer'
-                            }}
-                          >
-                            Mark Completed
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, background: 'var(--color-bg)', padding: '1rem', borderRadius: '8px' }}>
-                      {rec.message}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showAddModal && (
-        <AddRecommendationModal
-          studentId={id}
-          onClose={() => setShowAddModal(false)}
-          onSuccess={async () => {
-            setShowAddModal(false);
-            const { data } = await api.get(`/mentor/students/${id}/recommendations`);
-            setRecommendations(data.data || []);
+      {showCreateModal && (
+        <CreateInterventionModal 
+          preSelectedStudentId={student._id}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            fetchStudentProfile();
           }}
         />
       )}

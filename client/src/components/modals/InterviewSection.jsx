@@ -127,7 +127,7 @@ const InterviewCard = ({ interview, onEdit, onDelete }) => {
 }
 
 // ── Add/Edit Interview form ───────────────────────────────────────────────────
-const InterviewForm = ({ existing, onSave, onCancel, saving }) => {
+export const InterviewForm = ({ existing, onSave, onCancel, saving }) => {
   const [form, setForm] = useState(() => existing ? {
     round:            existing.round || 1,
     interviewType:    existing.interviewType || 'Video',

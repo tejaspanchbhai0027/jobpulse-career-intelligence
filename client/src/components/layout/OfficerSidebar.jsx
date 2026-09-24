@@ -81,6 +81,9 @@ const OfficerSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
         <NavLink to="/officer/interventions" style={navStyles}>
           <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>⚠️</span> Intervention Radar
         </NavLink>
+        <NavLink to="/officer/placement-drives" style={navStyles}>
+          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>📅</span> Placement Drives
+        </NavLink>
         <NavLink to="/officer/analytics" style={navStyles}>
           <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>📈</span> Analytics
         </NavLink>

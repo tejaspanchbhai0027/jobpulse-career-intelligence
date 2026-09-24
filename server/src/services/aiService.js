@@ -296,10 +296,75 @@ const analyzeInterviewTranscript = async (transcript) => {
   }
 };
 
+/**
+ * Generates an interview preparation kit (questions, topics, checklist).
+ */
+const generateInterviewPrep = async (jobDescription, role) => {
+  const modelConfig = getModel();
+  
+  if (!modelConfig) {
+    // Return mock data for testing if API key is not set
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return {
+      questions: [
+        "Can you describe your experience with modern web frameworks?",
+        "How do you handle state management in a large application?",
+        "Tell me about a time you optimized a slow-performing query."
+      ],
+      topics: ["React Ecosystem", "State Management", "Performance Optimization", "System Design Basics"],
+      checklist: [
+        { text: "Research the company's engineering blog", completed: false },
+        { text: "Review common behavioral questions", completed: false },
+        { text: "Prepare questions for the interviewer", completed: false }
+      ]
+    };
+  }
+
+  const { client, modelName } = modelConfig;
+  const prompt = `
+    You are an expert technical interviewer and career coach.
+    Based on the following job description and role title, generate an interview preparation kit for the candidate.
+    
+    Return ONLY a JSON object with this EXACT schema:
+    {
+      "questions": ["String (list of 3-5 high-probability interview questions)"],
+      "topics": ["String (list of 3-5 key topics or skills the candidate should review)"],
+      "checklist": [
+        {
+          "text": "String (a specific preparation action item)",
+          "completed": false
+        }
+      ]
+    }
+    
+    Role: ${role}
+    Job Description:
+    """
+    ${jobDescription}
+    """
+  `;
+
+  try {
+    const response = await client.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.3,
+      },
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error('AI Service Error (generateInterviewPrep):', error.message);
+    throw new Error('AI interview prep generation is currently unavailable.');
+  }
+};
+
 module.exports = {
   analyzeJD,
   matchResume,
   summarizeNotes,
   chatCopilot,
   analyzeInterviewTranscript,
+  generateInterviewPrep,
 };

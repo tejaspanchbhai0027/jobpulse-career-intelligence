@@ -138,9 +138,25 @@ const AdminStudentDirectory = () => {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>Student Directory</h1>
-        <p style={{ color: 'var(--color-text-secondary)', margin: '0.5rem 0 0 0' }}>Manage and oversee all students within the institution.</p>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>Student Directory</h1>
+          <p style={{ color: 'var(--color-text-secondary)', margin: '0.5rem 0 0 0' }}>Manage and oversee all students within the institution.</p>
+        </div>
+        {user?.role !== 'MENTOR' && (
+          <button className="btn-primary" onClick={() => {
+            const name = window.prompt("Enter Student Name:");
+            if (!name) return;
+            const email = window.prompt("Enter Student Email:");
+            if (!email) return;
+            const studentId = window.prompt("Enter Student ID (Roll No):");
+            if (!studentId) return;
+            
+            api.post('/admin/students', { name, email, studentId })
+              .then(() => fetchStudents())
+              .catch(err => alert('Failed to create student: ' + (err.response?.data?.message || err.message)));
+          }}>+ Add Student</button>
+        )}
       </div>
 
       {error && (
@@ -346,17 +362,44 @@ const AdminStudentDirectory = () => {
                       )}
                     </td>
                     <td style={tdStyle}>
-                      <Link 
-                        to={`/admin/students/${student._id}`} 
-                        style={{ 
-                          color: 'var(--color-brand-primary)', 
-                          textDecoration: 'none', 
-                          fontWeight: 600,
-                          fontSize: '0.9rem'
-                        }}
-                      >
-                        View Profile &rarr;
-                      </Link>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Link 
+                          to={`/admin/students/${student._id}`} 
+                          style={{ 
+                            color: 'var(--color-brand-primary)', 
+                            textDecoration: 'none', 
+                            fontWeight: 600,
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                          View Profile
+                        </Link>
+                        {user?.role !== 'MENTOR' && (
+                          <>
+                            <button 
+                              style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
+                              onClick={() => {
+                                const newName = window.prompt("Edit Student Name:", student.name);
+                                if (newName && newName !== student.name) {
+                                  api.patch(`/admin/students/${student._id}`, { name: newName })
+                                    .then(() => fetchStudents())
+                                    .catch(err => alert('Failed to update student: ' + err.message));
+                                }
+                              }}
+                            >Edit</button>
+                            <button 
+                              style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
+                              onClick={() => {
+                                if (window.confirm('Are you sure you want to deactivate this student?')) {
+                                  api.delete(`/admin/students/${student._id}`)
+                                    .then(() => fetchStudents())
+                                    .catch(err => alert('Failed to deactivate student: ' + err.message));
+                                }
+                              }}
+                            >Deactivate</button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

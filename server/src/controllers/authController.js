@@ -334,7 +334,10 @@ const validateInstitutionCode = async (req, res, next) => {
       return next(new Error('Institution code is required'));
     }
 
-    const institution = await Institution.findOne({ code: code.toUpperCase() });
+    // Strip spaces and hyphens for a more forgiving match
+    const cleanCode = code.replace(/[-\s]/g, '').toUpperCase();
+    const institution = await Institution.findOne({ code: cleanCode });
+    
     if (!institution) {
       res.status(404);
       return next(new Error('Invalid institution code'));

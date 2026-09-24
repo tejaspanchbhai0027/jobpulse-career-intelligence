@@ -2,13 +2,13 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Application = require('../models/Application');
 const Interview = require('../models/Interview');
+const InterventionSignal = require('../models/InterventionSignal');
 const copilotService = require('../services/intelligence/officerCopilotService');
 
 // ── @route  GET /api/officer/dashboard ─────────────────────────────────────────
 const getDashboardMetrics = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
-    const placementOfficerId = req.user._id;
 
     if (!institutionId) {
       res.status(403);
@@ -16,62 +16,95 @@ const getDashboardMetrics = async (req, res, next) => {
     }
 
     // 1. Total Students
-    const totalStudents = await User.countDocuments({ institutionId, placementOfficerId, role: 'STUDENT' });
+    const totalStudents = await User.countDocuments({ institutionId, role: 'STUDENT' });
 
     // 2. Total Mentors
-    const totalMentors = await User.countDocuments({ institutionId, placementOfficerId, role: 'MENTOR' });
+    const totalMentors = await User.countDocuments({ institutionId, role: 'MENTOR' });
 
     // 3. Unassigned Students (No mentor)
     const unassignedStudents = await User.countDocuments({
       institutionId,
-      placementOfficerId,
       role: 'STUDENT',
       $or: [{ mentorId: null }, { mentorId: { $exists: false } }]
     });
 
-    const assignedStudents = totalStudents - unassignedStudents;
+    // 4. Efficient aggregation for students in this institution
+    const allStudentIds = await User.find({ 
+      institutionId, 
+      role: 'STUDENT', 
+      'privacySettings.shareProfileWithPlacement': { $ne: false } 
+    }).distinct('_id');
 
-    // 5. Aggregate Applications, Interviews, Offers for students of this PO
-    const allStudents = await User.find({ institutionId, placementOfficerId, role: 'STUDENT' }).select('_id privacySettings');
-    const optInStudentIds = allStudents
-      .filter(s => s.privacySettings?.applicationProgress !== false)
-      .map(s => s._id);
+    // Applications Pipeline
+    const appsAggregation = await Application.aggregate([
+      { $match: { user: { $in: allStudentIds } } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
 
-    const appsPipeline = await Application.find({ user: { $in: optInStudentIds } }).lean();
+    let totalApps = 0;
+    let totalInterviews = 0;
+    let totalOffers = 0;
+    let shortlisted = 0;
+    let rejected = 0;
+
+    appsAggregation.forEach(a => {
+      totalApps += a.count;
+      if (a._id === 'Interview') totalInterviews += a.count;
+      if (a._id === 'Offer') totalOffers += a.count;
+      if (a._id === 'Assessment') shortlisted += a.count;
+      if (a._id === 'Rejected') rejected += a.count;
+    });
     
+    // Offers imply interviews, so let's adjust if necessary (some systems consider Offer a separate count that didn't pass through Interview, but logically it did)
+    // Actually, if status is exactly 'Offer', the document is no longer 'Interview'. So total past interviews = Interview + Offer
+    const pipelineInterviews = totalInterviews + totalOffers + rejected; // Roughly
+
     // Active students (applied in last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const activeStudentIds = new Set(
-      appsPipeline.filter(a => new Date(a.createdAt) > thirtyDaysAgo).map(a => a.user.toString())
-    );
-    const activeStudents = activeStudentIds.size;
+    const activeAggregation = await Application.aggregate([
+      { $match: { user: { $in: allStudentIds }, createdAt: { $gt: thirtyDaysAgo } } },
+      { $group: { _id: '$user' } },
+      { $count: 'activeCount' }
+    ]);
+    const activeStudents = activeAggregation.length > 0 ? activeAggregation[0].activeCount : 0;
 
-    let totalInterviews = 0;
-    let totalOffers = 0;
-    let totalApps = appsPipeline.length;
-
-    appsPipeline.forEach(a => {
-      if (a.status === 'Interview') totalInterviews++;
-      if (a.status === 'Offer') {
-        totalInterviews++; // Offers imply interviews
-        totalOffers++;
+    // 5. Interviews
+    const interviewsAgg = await Interview.aggregate([
+      { $match: { user: { $in: allStudentIds } } },
+      { $group: {
+          _id: { isUpcoming: { $gt: ['$scheduledAt', new Date()] } },
+          count: { $sum: 1 }
+        }
       }
+    ]);
+    
+    let upcomingInterviews = 0;
+    let completedInterviews = 0;
+    interviewsAgg.forEach(i => {
+      if (i._id.isUpcoming) upcomingInterviews += i.count;
+      else completedInterviews += i.count;
+    });
+
+    // Overdue interventions
+    const overdueInterventionsCount = await InterventionSignal.countDocuments({
+      institutionId,
+      status: { $in: ['OPEN', 'IN_PROGRESS'] },
+      dueDate: { $lt: new Date() }
     });
 
     const placementRate = totalStudents > 0 ? ((totalOffers / totalStudents) * 100).toFixed(1) : 0;
 
-    // Attention signals (Unassigned mentors)
+    // 6. Attention signals
     const attentionSignals = [];
     
-    // Get unassigned students details
+    // Unassigned students (Top 5)
     const unassignedList = await User.find({
       institutionId,
-      placementOfficerId,
       role: 'STUDENT',
       $or: [{ mentorId: null }, { mentorId: { $exists: false } }]
-    }).select('name email lastActive').limit(5).lean();
+    }).select('name email').limit(5).lean();
 
     unassignedList.forEach(s => {
       attentionSignals.push({
@@ -79,16 +112,36 @@ const getDashboardMetrics = async (req, res, next) => {
         type: 'UNASSIGNED',
         priority: 'HIGH',
         reason: 'Student does not have a mentor assigned.',
-        action: 'Assign Mentor'
+        action: 'Assign Mentor',
+        route: `/officer/students` // Adding explicit route for the frontend
       });
     });
 
-    // Pipeline Data
+    // Overdue interventions (Top 5)
+    const overdueList = await InterventionSignal.find({
+      institutionId,
+      status: { $in: ['OPEN', 'IN_PROGRESS'] },
+      dueDate: { $lt: new Date() }
+    }).populate('student', 'name email').limit(5).lean();
+
+    overdueList.forEach(i => {
+      if (i.student) {
+        attentionSignals.push({
+          student: i.student,
+          type: 'OVERDUE_INTERVENTION',
+          priority: 'HIGH',
+          reason: `Intervention "${i.title}" is overdue by ${Math.floor((new Date() - new Date(i.dueDate))/(1000*60*60*24))} days.`,
+          action: 'View Intervention',
+          route: `/officer/interventions`
+        });
+      }
+    });
+
+    // Pipeline Data for funnel
     const pipelineData = [
-      { name: 'Total Students', value: totalStudents },
-      { name: 'Active Job Seekers', value: activeStudents },
-      { name: 'Applications', value: totalApps },
-      { name: 'Interviews', value: totalInterviews },
+      { name: 'Applied', value: totalApps },
+      { name: 'Shortlisted', value: shortlisted },
+      { name: 'Interviews', value: pipelineInterviews },
       { name: 'Offers Received', value: totalOffers }
     ];
 
@@ -101,10 +154,13 @@ const getDashboardMetrics = async (req, res, next) => {
           totalMentors,
           unassignedStudents,
           applications: totalApps,
-          interviews: totalInterviews,
+          upcomingInterviews,
+          completedInterviews,
           offers: totalOffers,
+          overdueInterventions: overdueInterventionsCount,
           placementRate: parseFloat(placementRate),
-          needsAttention: unassignedStudents // Will expand as we add more signals
+          needsAttention: unassignedStudents + overdueInterventionsCount,
+          lastUpdated: new Date().toISOString()
         },
         pipeline: pipelineData,
         attentionSignals
@@ -119,21 +175,47 @@ const getDashboardMetrics = async (req, res, next) => {
 const getMentors = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
-    const placementOfficerId = req.user._id;
 
     if (!institutionId) {
       res.status(403);
       return next(new Error('Placement Officer is not bound to an institution'));
     }
 
+    const { search } = req.query;
+    const matchStage = { institutionId, role: 'MENTOR' };
+
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      matchStage.$or = [
+        { name: searchRegex },
+        { email: searchRegex }
+      ];
+    }
+
     const pipeline = [
-      { $match: { institutionId, placementOfficerId, role: 'MENTOR' } },
+      { $match: matchStage },
       {
         $lookup: {
           from: 'users',
           localField: '_id',
           foreignField: 'mentorId',
           as: 'students'
+        }
+      },
+      {
+        $lookup: {
+          from: 'applications',
+          localField: 'students._id',
+          foreignField: 'user',
+          as: 'allApplications'
+        }
+      },
+      {
+        $lookup: {
+          from: 'interventionsignals',
+          localField: '_id',
+          foreignField: 'mentorId',
+          as: 'interventions'
         }
       },
       {
@@ -144,38 +226,54 @@ const getMentors = async (req, res, next) => {
           isActive: 1,
           department: 1,
           studentCount: { $size: '$students' },
-          studentIds: '$students._id'
+          applications: { $size: '$allApplications' },
+          interviews: {
+            $size: {
+              $filter: {
+                input: '$allApplications',
+                as: 'app',
+                cond: { $eq: ['$$app.status', 'Interview'] }
+              }
+            }
+          },
+          offers: {
+            $size: {
+              $filter: {
+                input: '$allApplications',
+                as: 'app',
+                cond: { $eq: ['$$app.status', 'Offer'] }
+              }
+            }
+          },
+          openInterventions: {
+            $size: {
+              $filter: {
+                input: '$interventions',
+                as: 'sig',
+                cond: { $in: ['$$sig.status', ['OPEN', 'IN_PROGRESS']] }
+              }
+            }
+          },
+          overdueInterventions: {
+            $size: {
+              $filter: {
+                input: '$interventions',
+                as: 'sig',
+                cond: {
+                  $and: [
+                    { $in: ['$$sig.status', ['OPEN', 'IN_PROGRESS']] },
+                    { $ne: ['$$sig.dueDate', null] },
+                    { $lt: ['$$sig.dueDate', new Date()] }
+                  ]
+                }
+              }
+            }
+          }
         }
       }
     ];
 
     let mentors = await User.aggregate(pipeline);
-
-    for (let mentor of mentors) {
-      if (mentor.studentCount > 0) {
-        const statsAgg = await Application.aggregate([
-          { $match: { user: { $in: mentor.studentIds } } },
-          {
-            $group: {
-              _id: null,
-              totalApps: { $sum: 1 },
-              totalInterviews: { $sum: { $cond: [{ $eq: ['$status', 'Interview'] }, 1, 0] } },
-              totalOffers: { $sum: { $cond: [{ $eq: ['$status', 'Offer'] }, 1, 0] } }
-            }
-          }
-        ]);
-        const stats = statsAgg[0] || { totalApps: 0, totalInterviews: 0, totalOffers: 0 };
-        mentor.applications = stats.totalApps;
-        mentor.interviews = stats.totalInterviews;
-        mentor.offers = stats.totalOffers;
-        // Placed logic can be Offers > 0 but we'll leave this to frontend or exact field if present
-      } else {
-        mentor.applications = 0;
-        mentor.interviews = 0;
-        mentor.offers = 0;
-      }
-      delete mentor.studentIds;
-    }
 
     res.status(200).json({ success: true, count: mentors.length, data: mentors });
   } catch (error) {
@@ -187,18 +285,103 @@ const getMentors = async (req, res, next) => {
 const getMentorById = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
-    const placementOfficerId = req.user._id;
     const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      return next(new Error('Invalid mentor ID'));
+    }
 
-    const mentor = await User.findOne({ _id: id, institutionId, placementOfficerId, role: 'MENTOR' })
-      .select('name email department createdAt isActive');
+    const pipeline = [
+      { $match: { _id: new mongoose.Types.ObjectId(id), institutionId, role: 'MENTOR' } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: 'mentorId',
+          as: 'students'
+        }
+      },
+      {
+        $lookup: {
+          from: 'applications',
+          localField: 'students._id',
+          foreignField: 'user',
+          as: 'allApplications'
+        }
+      },
+      {
+        $lookup: {
+          from: 'interventionsignals',
+          localField: '_id',
+          foreignField: 'mentorId',
+          as: 'interventions'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          isActive: 1,
+          department: 1,
+          createdAt: 1,
+          studentCount: { $size: '$students' },
+          applications: { $size: '$allApplications' },
+          interviews: {
+            $size: {
+              $filter: {
+                input: '$allApplications',
+                as: 'app',
+                cond: { $eq: ['$$app.status', 'Interview'] }
+              }
+            }
+          },
+          offers: {
+            $size: {
+              $filter: {
+                input: '$allApplications',
+                as: 'app',
+                cond: { $eq: ['$$app.status', 'Offer'] }
+              }
+            }
+          },
+          openInterventions: {
+            $size: {
+              $filter: {
+                input: '$interventions',
+                as: 'sig',
+                cond: { $in: ['$$sig.status', ['OPEN', 'IN_PROGRESS']] }
+              }
+            }
+          },
+          overdueInterventions: {
+            $size: {
+              $filter: {
+                input: '$interventions',
+                as: 'sig',
+                cond: {
+                  $and: [
+                    { $in: ['$$sig.status', ['OPEN', 'IN_PROGRESS']] },
+                    { $ne: ['$$sig.dueDate', null] },
+                    { $lt: ['$$sig.dueDate', new Date()] }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    ];
 
-    if (!mentor) {
+    const mentor = await User.aggregate(pipeline);
+
+    if (!mentor || mentor.length === 0) {
       res.status(404);
       return next(new Error('Mentor not found or unauthorized'));
     }
 
-    res.status(200).json({ success: true, data: mentor });
+    res.status(200).json({ success: true, data: mentor[0] });
   } catch (error) {
     next(error);
   }
@@ -250,57 +433,123 @@ const createMentor = async (req, res, next) => {
 const getApplications = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
-    const placementOfficerId = req.user._id;
+    const { page = 1, limit = 25, status } = req.query;
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-    // Get all students under this PO who haven't explicitly hidden their apps
-    const students = await User.find({ 
-      institutionId, 
-      placementOfficerId, 
-      role: 'STUDENT',
-      'privacySettings.applicationProgress': { $ne: false } 
-    }).select('_id');
-    const studentIds = students.map(s => s._id);
+    const matchStage = { institutionId, role: 'STUDENT', 'privacySettings.applicationProgress': { $ne: false } };
+    
+    const pipeline = [
+      { $match: matchStage },
+      { $lookup: { from: 'applications', localField: '_id', foreignField: 'user', as: 'app' } },
+      { $unwind: '$app' }
+    ];
 
-    const applications = await Application.find({ user: { $in: studentIds } })
-      .populate({
-        path: 'user',
-        select: 'name email batch department mentorId',
-        populate: { path: 'mentorId', select: 'name' }
-      })
-      .sort({ updatedAt: -1 });
+    if (status && status !== 'ALL') {
+      pipeline.push({ $match: { 'app.status': status } });
+    }
 
-    res.status(200).json({ success: true, count: applications.length, data: applications });
+    pipeline.push(
+      { $lookup: { from: 'users', localField: 'mentorId', foreignField: '_id', as: 'mentor' } },
+      { $unwind: { path: '$mentor', preserveNullAndEmptyArrays: true } },
+      { $sort: { 'app.updatedAt': -1 } }
+    );
+
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await User.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
+
+    pipeline.push(
+      { $skip: skip },
+      { $limit: parseInt(limit, 10) },
+      {
+        $project: {
+          _id: '$app._id',
+          createdAt: '$app.createdAt',
+          dateApplied: '$app.dateApplied',
+          status: '$app.status',
+          company: '$app.company',
+          role: '$app.role',
+          user: {
+            _id: '$_id',
+            name: '$name',
+            email: '$email',
+            mentorId: { name: '$mentor.name' }
+          }
+        }
+      }
+    );
+
+    const applications = await User.aggregate(pipeline);
+
+    res.status(200).json({ 
+      success: true, 
+      count: applications.length, 
+      total,
+      page: parseInt(page, 10),
+      totalPages: Math.ceil(total / parseInt(limit, 10)),
+      data: applications 
+    });
   } catch (error) {
     next(error);
   }
 };
 
-// ── @route  GET /api/officer/interviews ────────────────────────────────────────
+// ── @route  GET /api/officer/interviews ──────────────────────────────────────────
 const getInterviews = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
-    const placementOfficerId = req.user._id;
+    const { page = 1, limit = 25 } = req.query;
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-    // Get all students under this PO who haven't explicitly hidden their apps
-    const students = await User.find({ 
-      institutionId, 
-      placementOfficerId, 
-      role: 'STUDENT',
-      'privacySettings.applicationProgress': { $ne: false } 
-    }).select('_id');
-    const studentIds = students.map(s => s._id);
+    const matchStage = { institutionId, role: 'STUDENT', 'privacySettings.interviewProgress': { $ne: false } };
+    
+    const pipeline = [
+      { $match: matchStage },
+      { $lookup: { from: 'interviews', localField: '_id', foreignField: 'user', as: 'interview' } },
+      { $unwind: '$interview' },
+      { $lookup: { from: 'applications', localField: 'interview.application', foreignField: '_id', as: 'app' } },
+      { $unwind: { path: '$app', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'users', localField: 'mentorId', foreignField: '_id', as: 'mentor' } },
+      { $unwind: { path: '$mentor', preserveNullAndEmptyArrays: true } },
+      { $sort: { 'interview.scheduledAt': 1 } }
+    ];
 
-    // Find applications that have an interview for these students
-    const interviews = await Interview.find({ student: { $in: studentIds } })
-      .populate('student', 'name email batch department mentorId')
-      .populate('application', 'company role status')
-      .populate({
-        path: 'student',
-        populate: { path: 'mentorId', select: 'name' }
-      })
-      .sort({ date: 1 });
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await User.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
 
-    res.status(200).json({ success: true, count: interviews.length, data: interviews });
+    pipeline.push(
+      { $skip: skip },
+      { $limit: parseInt(limit, 10) },
+      {
+        $project: {
+          _id: '$interview._id',
+          date: '$interview.scheduledAt',
+          round: '$interview.round',
+          application: {
+            company: '$app.company',
+            role: '$app.role'
+          },
+          student: {
+            _id: '$_id',
+            name: '$name',
+            email: '$email',
+            mentorId: { name: '$mentor.name' }
+          }
+        }
+      }
+    );
+
+    const interviews = await User.aggregate(pipeline);
+
+    res.status(200).json({ 
+      success: true, 
+      count: interviews.length, 
+      total,
+      page: parseInt(page, 10),
+      totalPages: Math.ceil(total / parseInt(limit, 10)),
+      data: interviews 
+    });
   } catch (error) {
     next(error);
   }
@@ -310,83 +559,86 @@ const getInterviews = async (req, res, next) => {
 const getInterventions = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
-    const placementOfficerId = req.user._id;
+    const { page = 1, limit = 25, status = 'ALL', priority = 'ALL', search, overdue } = req.query;
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-    // Get all students under this PO
-    const students = await User.find({ institutionId, placementOfficerId, role: 'STUDENT' })
-      .populate('mentorId', 'name email')
-      .lean();
+    const matchStage = { institutionId };
     
-    // Split students into those sharing apps and those not
-    const sharingAppStudents = students.filter(s => s.privacySettings?.applicationProgress !== false);
-    const sharingAppIds = sharingAppStudents.map(s => s._id);
-
-    // Only fetch apps and interviews for students who consent
-    const applications = await Application.find({ user: { $in: sharingAppIds } }).lean();
-    const interviews = await Interview.find({ student: { $in: sharingAppIds } }).lean();
-
-    const signals = [];
-
-    const now = new Date();
-
-    for (let student of students) {
-      // Signal: Unassigned (Applies to all students, even private ones, because it's a platform operational signal)
-      if (!student.mentorId) {
-        signals.push({
-          student,
-          type: 'UNASSIGNED',
-          priority: 'HIGH',
-          reason: 'Student does not have a mentor assigned.',
-          detectedAt: now
-        });
-      }
-
-      // The following signals only apply if the student is sharing application progress
-      if (student.privacySettings?.applicationProgress !== false) {
-        const studentApps = applications.filter(a => a.user.toString() === student._id.toString());
-        const studentInterviews = interviews.filter(i => i.student.toString() === student._id.toString());
-
-        // Signal: No activity
-        if (studentApps.length === 0 && student.mentorId) {
-          signals.push({
-            student,
-            type: 'NO_ACTIVITY',
-            priority: 'MEDIUM',
-            reason: 'Student has not submitted any applications.',
-            detectedAt: now
-          });
-        }
-
-        // Signal: Skill Gap
-        if (studentApps.length >= 10 && studentInterviews.length === 0) {
-          signals.push({
-            student,
-            type: 'SKILL_GAP',
-            priority: 'HIGH',
-            reason: 'Student has submitted many applications but secured 0 interviews.',
-            detectedAt: now
-          });
-        }
-        
-        // Signal: Upcoming Interview
-        const upcoming = studentInterviews.filter(i => new Date(i.date) > now && new Date(i.date) < new Date(now.getTime() + 48*60*60*1000));
-        for (let ui of upcoming) {
-           signals.push({
-            student,
-            type: 'UPCOMING_INTERVIEW',
-            priority: 'LOW',
-            reason: 'Student has an interview in the next 48 hours.',
-            detectedAt: now
-          });
-        }
-      }
+    if (status !== 'ALL') {
+      matchStage.status = status;
+    }
+    if (priority !== 'ALL') {
+      matchStage.priority = priority;
+    }
+    if (overdue === 'true') {
+      matchStage.status = { $in: ['OPEN', 'IN_PROGRESS'] };
+      matchStage.dueDate = { $lt: new Date() };
     }
 
-    // Sort by priority (HIGH first)
-    const priorityWeight = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
-    signals.sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority]);
+    const pipeline = [
+      { $match: matchStage },
+      { $lookup: { from: 'users', localField: 'student', foreignField: '_id', as: 'studentDoc' } },
+      { $unwind: '$studentDoc' }
+    ];
 
-    res.status(200).json({ success: true, count: signals.length, data: signals });
+    if (search) {
+      pipeline.push({
+        $match: {
+          'studentDoc.name': { $regex: search, $options: 'i' }
+        }
+      });
+    }
+
+    pipeline.push(
+      { $lookup: { from: 'users', localField: 'mentorId', foreignField: '_id', as: 'mentorDoc' } },
+      { $unwind: { path: '$mentorDoc', preserveNullAndEmptyArrays: true } },
+      { $sort: { createdAt: -1 } }
+    );
+
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await InterventionSignal.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
+
+    pipeline.push(
+      { $skip: skip },
+      { $limit: parseInt(limit, 10) },
+      {
+        $project: {
+          _id: 1,
+          type: 1,
+          priority: 1,
+          status: 1,
+          title: 1,
+          reason: 1,
+          evidence: 1,
+          suggestedSupport: 1,
+          dueDate: 1,
+          followUpDate: 1,
+          mentorNotes: 1,
+          resolvedAt: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          student: {
+            _id: '$studentDoc._id',
+            name: '$studentDoc.name',
+            email: '$studentDoc.email',
+            department: '$studentDoc.department',
+            mentorId: { name: '$mentorDoc.name', email: '$mentorDoc.email' }
+          }
+        }
+      }
+    );
+
+    const signals = await InterventionSignal.aggregate(pipeline);
+
+    res.status(200).json({ 
+      success: true, 
+      count: signals.length, 
+      total,
+      page: parseInt(page, 10),
+      totalPages: Math.ceil(total / parseInt(limit, 10)),
+      data: signals 
+    });
   } catch (error) {
     next(error);
   }
@@ -396,57 +648,80 @@ const getInterventions = async (req, res, next) => {
 const getAnalytics = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
-    const placementOfficerId = req.user._id;
 
-    const totalStudents = await User.countDocuments({ institutionId, placementOfficerId, role: 'STUDENT' });
-    const students = await User.find({ institutionId, placementOfficerId, role: 'STUDENT' }).select('_id department privacySettings');
-    
-    // Only include apps for students who haven't opted out of sharing application progress
-    const sharingAppStudents = students.filter(s => s.privacySettings?.applicationProgress !== false);
-    const sharingAppIds = sharingAppStudents.map(s => s._id);
+    // 1. Get base students for this institution
+    const students = await User.find({ institutionId, role: 'STUDENT' }).select('_id department').lean();
+    const studentIds = students.map(s => s._id);
+    const totalStudents = students.length;
 
-    const apps = await Application.find({ user: { $in: sharingAppIds } }).lean();
-    
-    let totalInterviews = 0;
-    let totalOffers = 0;
-    let totalApplied = apps.length;
+    // 2. Applications Metrics
+    const appsAgg = await Application.aggregate([
+      { $match: { user: { $in: studentIds }, status: { $ne: 'Wishlist' } } },
+      { $group: {
+          _id: '$user',
+          count: { $sum: 1 },
+          hasOffer: { $max: { $cond: [{ $eq: ['$status', 'Offer'] }, 1, 0] } },
+          offers: { $sum: { $cond: [{ $eq: ['$status', 'Offer'] }, 1, 0] } }
+      }}
+    ]);
 
-    apps.forEach(a => {
-      if (a.status === 'Interview') totalInterviews++;
-      if (a.status === 'Offer') {
-        totalInterviews++; // Assume offer came after interview
-        totalOffers++;
-      }
+    let applications = 0;
+    let offers = 0;
+    let placed = 0;
+    appsAgg.forEach(a => {
+      applications += a.count;
+      offers += a.offers;
+      if (a.hasOffer) placed++;
     });
 
-    const placementRate = totalStudents > 0 ? ((totalOffers / totalStudents) * 100).toFixed(1) : 0;
-    const interviewConversion = totalApplied > 0 ? ((totalInterviews / totalApplied) * 100).toFixed(1) : 0;
-    const offerConversion = totalInterviews > 0 ? ((totalOffers / totalInterviews) * 100).toFixed(1) : 0;
+    // 3. Interviews Metrics (Accurate count from Interview collection)
+    const interviews = await Interview.countDocuments({ user: { $in: studentIds } });
 
-    // --- RECHARTS DATA PREPARATION ---
+    // 4. Department Stats
+    const deptMap = {};
+    students.forEach(s => deptMap[s._id] = s.department || 'Unknown');
 
-    // 1. Department Stats (Bar Chart)
-    const departmentMap = {};
+    const departmentStatsMap = {};
     students.forEach(s => {
-      const dept = s.department || 'Unknown';
-      if (!departmentMap[dept]) departmentMap[dept] = { department: dept, students: 0, applications: 0, offers: 0 };
-      departmentMap[dept].students++;
+      const d = s.department || 'Unknown';
+      if (!departmentStatsMap[d]) departmentStatsMap[d] = { department: d, students: 0, applications: 0, offers: 0 };
+      departmentStatsMap[d].students++;
     });
 
-    apps.forEach(a => {
-      const student = students.find(s => s._id.toString() === a.user.toString());
-      if (student) {
-        const dept = student.department || 'Unknown';
-        if (departmentMap[dept]) {
-          departmentMap[dept].applications++;
-          if (a.status === 'Offer') departmentMap[dept].offers++;
-        }
+    appsAgg.forEach(a => {
+      const d = deptMap[a._id];
+      if (d && departmentStatsMap[d]) {
+        departmentStatsMap[d].applications += a.count;
+        departmentStatsMap[d].offers += a.offers;
       }
     });
-    
-    const departmentStats = Object.values(departmentMap).sort((a, b) => b.applications - a.applications);
 
-    // 2. Time Series Data (Line Chart - Last 30 Days)
+    const departmentStats = Object.values(departmentStatsMap).sort((a, b) => b.applications - a.applications);
+
+    const placementRate = totalStudents > 0 ? ((placed / totalStudents) * 100).toFixed(1) : 0;
+    const interviewConversion = applications > 0 ? ((interviews / applications) * 100).toFixed(1) : 0;
+    const offerConversion = interviews > 0 ? ((offers / interviews) * 100).toFixed(1) : 0;
+    
+    // 5. 30-Day Time Series Data
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    const appsTimeSeries = await Application.aggregate([
+      { $match: { user: { $in: studentIds }, dateApplied: { $gte: thirtyDaysAgo }, status: { $ne: 'Wishlist' } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$dateApplied' } }, applications: { $sum: 1 } } }
+    ]);
+
+    const offersTimeSeries = await Application.aggregate([
+      { $match: { user: { $in: studentIds }, status: 'Offer', updatedAt: { $gte: thirtyDaysAgo } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } }, offers: { $sum: 1 } } }
+    ]);
+
+    const intsTimeSeries = await Interview.aggregate([
+      { $match: { user: { $in: studentIds }, scheduledAt: { $gte: thirtyDaysAgo } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$scheduledAt' } }, interviews: { $sum: 1 } } }
+    ]);
+
     const timeSeriesMap = {};
     const today = new Date();
     for (let i = 29; i >= 0; i--) {
@@ -455,21 +730,19 @@ const getAnalytics = async (req, res, next) => {
       const dateStr = d.toISOString().split('T')[0];
       timeSeriesMap[dateStr] = { date: dateStr, applications: 0, interviews: 0, offers: 0 };
     }
-
-    apps.forEach(a => {
-      if (!a.createdAt) return;
-      const dateStr = new Date(a.createdAt).toISOString().split('T')[0];
-      if (timeSeriesMap[dateStr]) {
-        timeSeriesMap[dateStr].applications++;
-        if (a.status === 'Interview') timeSeriesMap[dateStr].interviews++;
-        if (a.status === 'Offer') {
-          timeSeriesMap[dateStr].interviews++;
-          timeSeriesMap[dateStr].offers++;
-        }
-      }
+    
+    appsTimeSeries.forEach(t => {
+      if (timeSeriesMap[t._id]) timeSeriesMap[t._id].applications = t.applications;
     });
 
-    // Formatting dates for X-axis
+    offersTimeSeries.forEach(t => {
+      if (timeSeriesMap[t._id]) timeSeriesMap[t._id].offers = t.offers;
+    });
+
+    intsTimeSeries.forEach(t => {
+      if (timeSeriesMap[t._id]) timeSeriesMap[t._id].interviews = t.interviews;
+    });
+
     const timeSeriesData = Object.values(timeSeriesMap).map(d => ({
       ...d,
       displayDate: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -479,10 +752,10 @@ const getAnalytics = async (req, res, next) => {
       success: true,
       data: {
         totalStudents,
-        applications: totalApplied,
-        interviews: totalInterviews,
-        offers: totalOffers,
-        placed: totalOffers,
+        applications,
+        interviews,
+        offers,
+        placed,
         placementRate,
         interviewConversion,
         offerConversion,

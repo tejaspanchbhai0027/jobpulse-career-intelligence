@@ -9,7 +9,9 @@ const {
   deleteInterview, 
   submitReflection, 
   getQuestionBank, 
-  addQuestion 
+  addQuestion,
+  updateInterviewPreparation,
+  generateInterviewPrepKit
 } = require('../controllers/interviewController');
 
 router.use(protect);
@@ -28,6 +30,10 @@ router.post('/', createInterview);
 // @route  DELETE /api/interviews/:id
 router.put('/:id', updateInterview);
 router.delete('/:id', deleteInterview);
+
+// Phase 3: Preparation
+router.put('/:id/preparation', updateInterviewPreparation);
+router.post('/:id/generate-prep', generateInterviewPrepKit);
 
 // Phase E: Reflection and Question Bank
 router.post('/:id/reflection', submitReflection);

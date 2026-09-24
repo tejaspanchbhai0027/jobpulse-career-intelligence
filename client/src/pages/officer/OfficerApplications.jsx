@@ -9,11 +9,18 @@ const OfficerApplications = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const navigate = useNavigate();
 
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   useEffect(() => {
     const fetchApplications = async () => {
+      setLoading(true);
       try {
-        const { data } = await api.get('/officer/applications');
+        const { data } = await api.get('/officer/applications', {
+          params: { page, limit: 25, status: statusFilter }
+        });
         setApplications(data.data || []);
+        setTotalPages(data.totalPages || 1);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch applications');
       } finally {
@@ -21,7 +28,7 @@ const OfficerApplications = () => {
       }
     };
     fetchApplications();
-  }, []);
+  }, [page, statusFilter]);
 
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>Loading application intelligence...</div>;
@@ -35,9 +42,7 @@ const OfficerApplications = () => {
     );
   }
 
-  const filteredApplications = statusFilter === 'ALL' 
-    ? applications 
-    : applications.filter(app => app.status === statusFilter);
+  const filteredApplications = applications;
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -51,7 +56,7 @@ const OfficerApplications = () => {
           {['ALL', 'Applied', 'Interview', 'Offer', 'Rejected'].map(s => (
             <button 
               key={s}
-              onClick={() => setStatusFilter(s)}
+              onClick={() => { setStatusFilter(s); setPage(1); }}
               style={{
                 padding: '0.5rem 1rem',
                 border: 'none',
@@ -105,8 +110,8 @@ const OfficerApplications = () => {
                       <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{app.user?.email}</div>
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{app.companyName}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{app.jobTitle}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{app.company}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{app.role}</div>
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>
                       <span style={{ 
@@ -129,6 +134,44 @@ const OfficerApplications = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem' }}>
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: page === 1 ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+              borderRadius: '6px',
+              cursor: page === 1 ? 'not-allowed' : 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Previous
+          </button>
+          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.9rem' }}>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: page === totalPages ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+              borderRadius: '6px',
+              cursor: page === totalPages ? 'not-allowed' : 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

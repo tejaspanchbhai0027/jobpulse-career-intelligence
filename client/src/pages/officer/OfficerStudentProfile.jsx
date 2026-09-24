@@ -164,6 +164,7 @@ const OfficerStudentProfile = () => {
           <StatBox label="Applications" value={stats.totalApps} />
           <StatBox label="Interviews" value={stats.interviews} />
           <StatBox label="Offers" value={stats.offers} highlight={stats.offers > 0} />
+          <StatBox label="Open Issues" value={stats.openInterventions || 0} highlight={stats.openInterventions > 0} />
         </div>
       </div>
 

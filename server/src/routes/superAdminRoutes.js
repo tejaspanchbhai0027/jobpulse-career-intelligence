@@ -1,6 +1,6 @@
 const express = require('express');
 const { protect, requireRole } = require('../middleware/authMiddleware');
-const { getPlatformMetrics, getInstitutions, createInstitution, createInstitutionAdmin, getInstitutionById, updateInstitutionStatus, getSystemSettings, sendTestEmailRoute } = require('../controllers/superAdminController');
+const { getPlatformMetrics, getInstitutions, createInstitution, createInstitutionAdmin, getInstitutionById, updateInstitutionStatus, updateInstitution, deleteInstitution, getSystemSettings, sendTestEmailRoute } = require('../controllers/superAdminController');
 
 const router = express.Router();
 
@@ -13,7 +13,11 @@ router.route('/institutions')
   .post(createInstitution);
 
 router.post('/institutions/:id/admin', createInstitutionAdmin);
-router.get('/institutions/:id', getInstitutionById);
+router.route('/institutions/:id')
+  .get(getInstitutionById)
+  .patch(updateInstitution)
+  .delete(deleteInstitution);
+  
 router.patch('/institutions/:id/status', updateInstitutionStatus);
 
 router.get('/settings', getSystemSettings);
