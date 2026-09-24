@@ -18,14 +18,16 @@ Job hunting across multiple job boards (LinkedIn, Indeed, company career pages, 
 ## Features ✨
 
 - 🗂️ **Kanban Pipeline Board**: Drag and drop applications across 6 stages (*Wishlist*, *Applied*, *Assessment*, *Interview*, *Offer*, *Rejected*).
+- 🤖 **AI Career Intelligence**: Gemini-powered resume matching, job description analysis, interview transcript extraction, and interactive Copilot.
+- 🎓 **Role-Based Access Control (RBAC)**: Dedicated portals for Students, Placement Officers, Mentors, Institution Admins, and Super Admins.
+- 🏢 **Placement Drives & Opportunities**: Institutional job boards to track campus placements and external roles.
 - 🎙️ **Interview Tracker**: Multi-round scheduling for Phone, Video, Technical, HR, Behavioral, and On-site interviews with interviewer contacts and meeting links.
+- ✅ **Task & Readiness Tracker**: Action item lists and interview preparation readiness scoreboards.
 - ⚡ **Follow-Up Nudge Engine**: Daily background cron job scans for stale applications and sends automated follow-up reminders.
 - 👻 **Ghost Job Detection**: Automatically identifies applications stuck in *Applied* or *Assessment* for 30+ days without updates.
 - ⏰ **Deadline Reminders & Countdowns**: Dynamic badges on Kanban cards ("3 days left", "Today", "Closed") with automated deadline reminder emails.
 - 📊 **Analytics & Source Conversion**: Deep insights into response rates, avg days to interview/offer, weekly activity, and conversion by application source.
 - 🔒 **Security Hardened**: Protected with `Helmet` security headers, strict IP rate limiters, JWT authentication, and full `Zod` request body validation.
-- ⚙️ **User Preferences**: Fine-grained settings for custom follow-up windows (1–90 days) and toggleable email, deadline, and interview notifications.
-- 🧪 **Automated Testing Suite**: Built-in test suite powered by `Jest`, `Supertest`, and `mongodb-memory-server`.
 
 ---
 
@@ -34,12 +36,13 @@ Job hunting across multiple job boards (LinkedIn, Indeed, company career pages, 
 ### Frontend
 - **Framework**: React 19 + Vite
 - **Routing**: React Router DOM v7
-- **Styling**: Vanilla CSS (Glassmorphism design system) + Tailwind CSS
+- **Styling**: Vanilla CSS (Glassmorphism design system) + Tailwind CSS v4
 - **Visualization**: Recharts
 
 ### Backend
 - **Runtime**: Node.js + Express
 - **Database**: MongoDB Atlas + Mongoose ODM (indexed schemas)
+- **AI Integration**: @google/genai (Gemini 3.6 Flash)
 - **Validation**: Zod v4 (Strict request validation & coercion)
 - **Security**: Helmet (HTTP security headers) & Express Rate Limit
 - **Automation**: Node-Cron (Background processing)
