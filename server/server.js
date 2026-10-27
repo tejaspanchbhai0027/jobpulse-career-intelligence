@@ -22,10 +22,12 @@ const applicationRoutes     = require('./src/routes/applicationRoutes');
 const nudgeRoutes           = require('./src/routes/nudgeRoutes');
 const dashboardRoutes       = require('./src/routes/dashboardRoutes');
 const interviewRoutes       = require('./src/routes/interviewRoutes');
+const interviewPrepRoutes   = require('./src/routes/interviewPrepRoutes');
 const aiRoutes              = require('./src/routes/aiRoutes');
 const taskRoutes            = require('./src/routes/taskRoutes');
 const readinessRoutes       = require('./src/routes/readinessRoutes');
 const opportunityRoutes     = require('./src/routes/opportunityRoutes');
+const placementUpdatesRoutes = require('./src/routes/placementUpdatesRoutes');
 
 const intelligenceRoutes    = require('./src/routes/intelligenceRoutes');
 const resumeRoutes          = require('./src/routes/resumeRoutes');
@@ -46,6 +48,7 @@ const adminPlacementVerificationRoutes = require('./src/routes/placementVerifica
 const adminPlacementAuditRoutes = require('./src/routes/placementAuditRoutes');
 const mentorRoutes            = require('./src/routes/mentorRoutes');
 const officerRoutes           = require('./src/routes/officerRoutes');
+const offerRoutes             = require('./src/routes/offerRoutes');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 const { startFollowUpCron } = require('./src/jobs/followUpJob');
 
@@ -117,11 +120,14 @@ app.use('/api/applications',  applicationRoutes);
 app.use('/api/nudge',         nudgeRoutes);
 app.use('/api/dashboard',     dashboardRoutes);
 app.use('/api/interviews',    interviewRoutes);
+app.use('/api/student/interview-prep', interviewPrepRoutes);
 app.use('/api/ai',            aiRoutes);
 app.use('/api/tasks',         taskRoutes);
 app.use('/api/readiness',     readinessRoutes);
 app.use('/api/opportunities', opportunityRoutes);
-
+const copilotRoutes = require('./src/routes/copilotRoutes');
+app.use('/api/student/copilot', copilotRoutes);
+app.use('/api/student/placement-updates', placementUpdatesRoutes);
 app.use('/api/intelligence',  intelligenceRoutes);
 app.use('/api/resumes',       resumeRoutes);
 app.use('/api/experiments',   experimentRoutes);
@@ -141,6 +147,7 @@ app.use('/api/admin/placement-verification', adminPlacementVerificationRoutes);
 app.use('/api/admin/placement-audit', adminPlacementAuditRoutes);
 app.use('/api/mentor',              mentorRoutes);
 app.use('/api/officer',             officerRoutes);
+app.use('/api/offers',              offerRoutes);
 
 // ── Error Handling ────────────────────────────────────────────────────────────
 app.use(notFound);

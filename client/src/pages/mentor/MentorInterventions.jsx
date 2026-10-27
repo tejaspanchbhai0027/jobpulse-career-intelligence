@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import CreateInterventionModal from '../../components/mentor/CreateInterventionModal';
 
 const MentorInterventions = () => {
   const [interventions, setInterventions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('ALL'); // ALL, OPEN, IN_PROGRESS, RESOLVED
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
 
   const fetchInterventions = async () => {
@@ -57,12 +55,6 @@ const MentorInterventions = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Action Plan Queue</h1>
-            <button 
-              onClick={() => setShowCreateModal(true)}
-              style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              + Create Plan
-            </button>
           </div>
           <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>Manage interventions and follow-ups for your assigned students.</p>
         </div>
@@ -186,16 +178,6 @@ const MentorInterventions = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {showCreateModal && (
-        <CreateInterventionModal 
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            fetchInterventions();
-          }}
-        />
       )}
     </div>
   );

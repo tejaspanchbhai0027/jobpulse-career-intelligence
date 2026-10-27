@@ -94,7 +94,15 @@ const ApplicationModal = ({ isOpen, onClose, application, onSave, onDelete }) =>
       try {
         const res = await api.get('/resumes')
         if (res.data.success) {
-          setResumes(res.data.data)
+          const fetchedResumes = res.data.data;
+          setResumes(fetchedResumes)
+          if (!application && fetchedResumes.length > 0) {
+            const defaultResume = fetchedResumes.find(r => r.isDefault);
+            setForm(prev => ({
+              ...prev,
+              resumeId: defaultResume ? defaultResume._id : fetchedResumes[0]._id
+            }))
+          }
         }
       } catch (err) {
         console.error('Failed to fetch resumes for modal', err)

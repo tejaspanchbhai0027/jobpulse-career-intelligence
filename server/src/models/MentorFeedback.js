@@ -22,7 +22,7 @@ const mentorFeedbackSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['RESUME', 'INTERVIEW', 'GENERAL', 'NOTE'],
+    enum: ['RESUME', 'INTERVIEW', 'GENERAL', 'NOTE', 'NOTICE'],
     default: 'GENERAL'
   },
   actionItem: {

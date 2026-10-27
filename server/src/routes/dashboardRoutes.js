@@ -5,6 +5,7 @@ const { protect, requireRole } = require('../middleware/authMiddleware');
 const Application = require('../models/Application');
 const Interview   = require('../models/Interview');
 const MentorFeedback = require('../models/MentorFeedback');
+const InstitutionNotice = require('../models/InstitutionNotice');
 const { getStudentRecommendations, studentUpdateRecommendationStatus } = require('../controllers/mentorRecommendationController');
 
 // ── @route  GET /api/dashboard/stats ─────────────────────────────────────────
@@ -237,12 +238,37 @@ router.get('/feedback', async (req, res, next) => {
     if (req.query.applicationId) {
       query.applicationId = req.query.applicationId;
     }
+    if (req.query.type) {
+      query.type = req.query.type;
+    }
 
     const feedback = await MentorFeedback.find(query)
       .populate('mentorId', 'name email role')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.status(200).json({ success: true, data: feedback });
+    let combined = [...feedback];
+
+    if (!req.query.type || req.query.type === 'NOTICE') {
+      const institutionId = req.user.institutionId;
+      const notices = await InstitutionNotice.find({
+        institutionId,
+        targetAudience: { $in: ['STUDENTS', 'ALL'] }
+      }).populate('senderId', 'name role').sort({ createdAt: -1 }).lean();
+      
+      const formattedNotices = notices.map(n => ({
+        _id: n._id,
+        content: `**${n.title}**\n\n${n.message}`,
+        type: 'NOTICE',
+        mentorId: n.senderId,
+        createdAt: n.createdAt,
+        isGlobal: true,
+        priority: n.priority
+      }));
+      combined = [...combined, ...formattedNotices].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    res.status(200).json({ success: true, data: combined });
   } catch (err) {
     next(err);
   }

@@ -35,6 +35,9 @@ const Settings = () => {
         targetRoles: user.targetRoles?.join(', ') || '',
         targetSalary: user.targetSalary || '',
         workPreference: user.workPreference || 'Any',
+        department: user.department || '',
+        class: user.class || '',
+        division: user.division || '',
         
         followUpWindowDays: user.followUpWindowDays || 7,
         emailNotifications: user.emailNotifications ?? true,
@@ -180,7 +183,7 @@ const Settings = () => {
         placementOfficerId: instForm.placementOfficerId,
         mentorId: instForm.mentorId
       });
-      addToast('Success', 'Successfully connected to institution!', 'success');
+      addToast('Success', 'Connection request sent successfully! Pending mentor approval.', 'success');
       setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
       addToast('Error', err.response?.data?.message || 'Failed to connect institution', 'error');
@@ -204,8 +207,10 @@ const Settings = () => {
 
   const tabs = [
     { id: 'profile', label: '👤 Profile' },
-    { id: 'preferences', label: '🎯 Job Preferences' },
-    { id: 'institution', label: '🏫 Institution' },
+    ...(user?.role === 'STUDENT' ? [
+      { id: 'preferences', label: '🎯 Job Preferences' },
+      { id: 'institution', label: '🏫 Institution' }
+    ] : []),
     { id: 'notifications', label: '🔔 Notifications' },
     { id: 'appearance', label: '🎨 Appearance' },
     { id: 'privacy', label: '🔒 Privacy & Data' },
@@ -215,8 +220,16 @@ const Settings = () => {
   const inputStyle = { width: '100%', padding: '0.75rem', background: 'var(--color-surface-overlay)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-primary)' };
   const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.5rem' };
 
+  const isStudent = user?.role === 'STUDENT';
+  const containerStyle = { 
+    maxWidth: '1000px', 
+    margin: '0 auto', 
+    paddingTop: isStudent ? '96px' : '2rem', 
+    minHeight: '100vh' 
+  };
+
   return (
-    <div className="flex flex-col md:flex-row gap-6 md:gap-8 pb-12 w-full max-w-[1200px] mx-auto px-6 sm:px-8" style={{ paddingTop: '96px', minHeight: '100vh' }}>
+    <div className={`flex flex-col md:flex-row gap-6 md:gap-8 pb-12 w-full px-6 sm:px-8`} style={containerStyle}>
       
       {/* Sidebar Navigation */}
       <div className="w-full md:w-[250px] flex-shrink-0">
@@ -286,6 +299,18 @@ const Settings = () => {
               <div>
                 <label style={labelStyle}>GitHub / Portfolio</label>
                 <input type="text" name="githubUrl" value={formData.githubUrl} onChange={handleChange} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Department</label>
+                <input type="text" name="department" value={formData.department} onChange={handleChange} style={inputStyle} placeholder="e.g. Computer Science" />
+              </div>
+              <div>
+                <label style={labelStyle}>Class</label>
+                <input type="text" name="class" value={formData.class} onChange={handleChange} style={inputStyle} placeholder="e.g. TE" />
+              </div>
+              <div>
+                <label style={labelStyle}>Division</label>
+                <input type="text" name="division" value={formData.division} onChange={handleChange} style={inputStyle} placeholder="e.g. A" />
               </div>
             </div>
             

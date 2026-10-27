@@ -43,6 +43,11 @@ const userSchema = new mongoose.Schema(
       ref: 'Institution',
       default: null,
     },
+    connectionStatus: {
+      type: String,
+      enum: ['NONE', 'PENDING', 'APPROVED', 'REJECTED'],
+      default: 'NONE',
+    },
     placementOfficerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -53,7 +58,26 @@ const userSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
+    placementStatus: {
+      type: String,
+      enum: ['UNPLACED', 'PLACED'],
+      default: 'UNPLACED'
+    },
+    placedCompany: {
+      type: String,
+      default: ''
+    },
     department: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    class: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    division: {
       type: String,
       default: '',
       trim: true,

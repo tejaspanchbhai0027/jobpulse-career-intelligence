@@ -161,7 +161,9 @@ const MentorStudents = () => {
                   >
                     <td style={{ padding: '1rem 1.5rem' }}>
                       <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{student.name}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{student.department || 'N/A'}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        {[student.department, student.class, student.division].filter(Boolean).join(' - ') || 'N/A'}
+                      </div>
                     </td>
                     <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: 'var(--color-brand-primary)' }}>
                       {student.applicationCount === null ? '🔒' : student.applicationCount || 0}

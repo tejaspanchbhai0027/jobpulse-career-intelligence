@@ -67,6 +67,16 @@ const placementDriveSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  applicationUrl: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  selectionProcess: {
+    type: String,
+    trim: true,
+    default: ''
+  },
 
   // Eligibility
   eligibleDepartments: [{
@@ -113,13 +123,12 @@ const placementDriveSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Ensure end date is after start date
-placementDriveSchema.pre('validate', function (next) {
+placementDriveSchema.pre('validate', function () {
   if (this.registrationStartDate && this.registrationEndDate) {
     if (this.registrationEndDate <= this.registrationStartDate) {
       this.invalidate('registrationEndDate', 'Registration End Date must be after Registration Start Date');
     }
   }
-  next();
 });
 
 // Compound indexes

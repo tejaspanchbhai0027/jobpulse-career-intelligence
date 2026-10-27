@@ -9,7 +9,10 @@ const {
   getResume,
   setDefaultResume,
   updateResume,
-  deleteResume
+  deleteResume,
+  downloadResume,
+  analyzeResumeATSController,
+  matchJD
 } = require('../controllers/resumeController');
 
 // Configure Multer storage
@@ -54,5 +57,8 @@ router.route('/:id')
   .delete(deleteResume);
 
 router.patch('/:id/default', setDefaultResume);
+router.get('/:id/download', downloadResume);
+router.post('/:id/analyze', analyzeResumeATSController);
+router.post('/:id/jd-match', matchJD);
 
 module.exports = router;

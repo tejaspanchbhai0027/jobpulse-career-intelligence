@@ -5,6 +5,8 @@ const Interview = require('../models/Interview');
 const MentorFeedback = require('../models/MentorFeedback');
 const Task = require('../models/Task');
 const InterventionSignal = require('../models/InterventionSignal');
+const InstitutionConnectionRequest = require('../models/InstitutionConnectionRequest');
+const InstitutionNotice = require('../models/InstitutionNotice');
 const copilotService = require('../services/intelligence/mentorCopilotService');
 
 // ── @route  GET /api/mentor/dashboard ──────────────────────────────────────────
@@ -220,8 +222,11 @@ const getAnalytics = async (req, res, next) => {
 const getNotes = async (req, res, next) => {
   try {
     const mentorId = req.user._id;
-    // We fetch notes of type 'NOTE' created by this mentor
-    const notes = await MentorFeedback.find({ mentorId, type: 'NOTE' })
+    // We fetch notes of type 'NOTE' and 'NOTICE' created by this mentor
+    const notes = await MentorFeedback.find({ 
+      mentorId, 
+      type: { $in: ['NOTE', 'NOTICE'] }
+    })
       .populate('studentId', 'name email')
       .sort({ createdAt: -1 });
 
@@ -238,6 +243,22 @@ const createNote = async (req, res, next) => {
     const institutionId = req.user.institutionId;
     const { studentId, content, actionItem, nextFollowUpDate } = req.body;
 
+    if (studentId === 'ALL') {
+      const students = await User.find({ mentorId, institutionId, role: 'STUDENT' });
+      const notices = students.map(s => ({
+        studentId: s._id,
+        mentorId,
+        content,
+        actionItem,
+        nextFollowUpDate,
+        type: 'NOTICE'
+      }));
+      if (notices.length > 0) {
+        await MentorFeedback.insertMany(notices);
+      }
+      return res.status(201).json({ success: true, count: notices.length });
+    }
+
     // Verify student belongs to mentor
     const student = await User.findOne({ _id: studentId, mentorId, institutionId, role: 'STUDENT' });
     if (!student) {
@@ -251,7 +272,7 @@ const createNote = async (req, res, next) => {
       content,
       actionItem,
       nextFollowUpDate,
-      type: 'NOTE'
+      type: 'NOTICE'
     });
 
     res.status(201).json({ success: true, data: note });
@@ -267,7 +288,11 @@ const updateNote = async (req, res, next) => {
     const { id } = req.params;
     const { content, actionItem, nextFollowUpDate } = req.body;
 
-    let note = await MentorFeedback.findOne({ _id: id, mentorId, type: 'NOTE' });
+    let note = await MentorFeedback.findOne({ 
+      _id: id, 
+      mentorId, 
+      type: { $in: ['NOTE', 'NOTICE'] } 
+    });
     if (!note) {
       res.status(404);
       return next(new Error('Note not found or unauthorized'));
@@ -291,7 +316,11 @@ const deleteNote = async (req, res, next) => {
     const mentorId = req.user._id;
     const { id } = req.params;
 
-    const note = await MentorFeedback.findOne({ _id: id, mentorId, type: 'NOTE' });
+    const note = await MentorFeedback.findOne({ 
+      _id: id, 
+      mentorId, 
+      type: { $in: ['NOTE', 'NOTICE'] } 
+    });
     if (!note) {
       res.status(404);
       return next(new Error('Note not found or unauthorized'));
@@ -400,6 +429,177 @@ const updateIntervention = async (req, res, next) => {
   }
 };
 
+// ── @route  GET /api/mentor/student-connection-requests ─────────────────────
+const getStudentConnectionRequests = async (req, res, next) => {
+  try {
+    const requests = await InstitutionConnectionRequest.find({
+      mentorId: req.user._id,
+      institutionId: req.user.institutionId
+    })
+    .populate('studentId', 'name email')
+    .populate('placementOfficerId', 'name')
+    .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: requests });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  GET /api/mentor/student-connection-requests/:id ─────────────────
+const getStudentConnectionRequestById = async (req, res, next) => {
+  try {
+    const request = await InstitutionConnectionRequest.findOne({
+      _id: req.params.id,
+      mentorId: req.user._id,
+      institutionId: req.user.institutionId
+    })
+    .populate('studentId', 'name email')
+    .populate('placementOfficerId', 'name');
+
+    if (!request) {
+      res.status(404);
+      return next(new Error('Request not found or unauthorized'));
+    }
+
+    res.status(200).json({ success: true, data: request });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  PATCH /api/mentor/student-connection-requests/:id/approve ───────
+const approveStudentConnectionRequest = async (req, res, next) => {
+  try {
+    const request = await InstitutionConnectionRequest.findOne({
+      _id: req.params.id,
+      mentorId: req.user._id,
+      institutionId: req.user.institutionId
+    });
+
+    if (!request) {
+      res.status(404);
+      return next(new Error('Request not found or unauthorized'));
+    }
+
+    if (request.status !== 'PENDING') {
+      res.status(400);
+      return next(new Error('Request is already processed'));
+    }
+
+    request.status = 'APPROVED';
+    request.reviewedBy = req.user._id;
+    request.reviewedAt = new Date();
+    await request.save();
+
+    // Update the student
+    const student = await User.findById(request.studentId);
+    if (student) {
+      student.institutionId = request.institutionId;
+      student.placementOfficerId = request.placementOfficerId;
+      student.mentorId = request.mentorId;
+      student.connectionStatus = 'APPROVED';
+      await student.save();
+    }
+
+    // Notify student
+    try {
+      const { createNotification } = require('../services/notificationService');
+      await createNotification({
+        userId: student._id,
+        type: 'SYSTEM',
+        title: 'Connection Request Approved',
+        message: 'Your institution connection request has been approved by your mentor.',
+        link: '/dashboard'
+      });
+    } catch (err) {
+      console.error('Failed to notify student:', err);
+    }
+
+    res.status(200).json({ success: true, data: request });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  PATCH /api/mentor/student-connection-requests/:id/reject ────────
+const rejectStudentConnectionRequest = async (req, res, next) => {
+  try {
+    const { rejectionReason } = req.body;
+    const request = await InstitutionConnectionRequest.findOne({
+      _id: req.params.id,
+      mentorId: req.user._id,
+      institutionId: req.user.institutionId
+    });
+
+    if (!request) {
+      res.status(404);
+      return next(new Error('Request not found or unauthorized'));
+    }
+
+    if (request.status !== 'PENDING') {
+      res.status(400);
+      return next(new Error('Request is already processed'));
+    }
+
+    request.status = 'REJECTED';
+    request.reviewedBy = req.user._id;
+    request.reviewedAt = new Date();
+    if (rejectionReason) request.rejectionReason = rejectionReason;
+    await request.save();
+
+    // Update student
+    const student = await User.findById(request.studentId);
+    if (student) {
+      student.connectionStatus = 'REJECTED';
+      await student.save();
+    }
+
+    // Notify student
+    try {
+      const { createNotification } = require('../services/notificationService');
+      await createNotification({
+        userId: request.studentId,
+        type: 'SYSTEM',
+        title: 'Connection Request Rejected',
+        message: 'Your institution connection request has been rejected. ' + (rejectionReason ? `Reason: ${rejectionReason}` : 'Please contact your placement officer.'),
+        link: '/dashboard'
+      });
+    } catch (err) {
+      console.error('Failed to notify student:', err);
+    }
+
+    res.status(200).json({ success: true, data: request });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  GET /api/mentor/notices ──────────────────────────────────────────
+const getNotices = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    const notices = await InstitutionNotice.find({
+      institutionId,
+      targetAudience: { $in: ['MENTORS', 'ALL'] }
+    }).populate('senderId', 'name role').sort({ createdAt: -1 }).lean();
+    
+    const formattedNotices = notices.map(n => ({
+      _id: n._id,
+      title: n.title,
+      content: n.message,
+      type: 'NOTICE',
+      sender: n.senderId,
+      createdAt: n.createdAt,
+      priority: n.priority
+    }));
+
+    res.status(200).json({ success: true, data: formattedNotices });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDashboardMetrics,
   getApplications,
@@ -412,5 +612,10 @@ module.exports = {
   deleteNote,
   queryCopilot,
   createIntervention,
-  updateIntervention
+  updateIntervention,
+  getStudentConnectionRequests,
+  getStudentConnectionRequestById,
+  approveStudentConnectionRequest,
+  rejectStudentConnectionRequest,
+  getNotices
 };

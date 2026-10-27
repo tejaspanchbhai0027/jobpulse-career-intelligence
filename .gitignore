@@ -49,7 +49,8 @@ client/.vite/
 *.cache
 .npm/
 
-# ── Resumes & Seeds ──────────────────────────────────────────────────────────
-server/storage/resumes/
+# ── Storage & Seeds ──────────────────────────────────────────────────────────
+server/storage/
 server/scripts/seed*.js
 server/seed-*.js
+server/reset.js

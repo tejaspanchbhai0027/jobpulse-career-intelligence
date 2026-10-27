@@ -1,8 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import usePlacementDrives from '../../hooks/usePlacementDrives';
+import CreateDriveModal from '../../components/modals/CreateDriveModal';
 
 const OfficerPlacementDrives = () => {
-  const { drives, loading, error, updateDriveStatus } = usePlacementDrives('OFFICER');
+  const { drives, loading, error, createDrive, updateDrive, updateDriveStatus, deleteDrive } = usePlacementDrives('OFFICER');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingDrive, setEditingDrive] = useState(null);
+
+  const handleOpenEdit = (drive) => {
+    setEditingDrive(drive);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenCreate = () => {
+    setEditingDrive(null);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this placement drive? This action cannot be undone.')) {
+      const res = await deleteDrive(id);
+      if (!res.success) {
+        alert(res.message);
+      }
+    }
+  };
 
   const handleStatusChange = async (id, status) => {
     const res = await updateDriveStatus(id, status);
@@ -18,6 +40,13 @@ const OfficerPlacementDrives = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>Placement Drives</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>View and manage campus recruitment events</p>
         </div>
+        <button 
+          onClick={handleOpenCreate}
+          className="btn-primary" 
+          style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '999px', fontSize: '0.95rem' }}
+        >
+          <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>＋</span> Create Drive
+        </button>
       </div>
 
       {error && (
@@ -41,6 +70,7 @@ const OfficerPlacementDrives = () => {
                 <th style={thStyle}>Company</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Registered</th>
+                <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -53,22 +83,35 @@ const OfficerPlacementDrives = () => {
                   <td style={tdStyle}>{drive.company}</td>
                   <td style={tdStyle}>
                     <select 
-                      value={drive.status} 
+                      value={drive.status === 'REGISTRATION_OPEN' ? 'REGISTRATION_OPEN' : 'REGISTRATION_CLOSED'} 
                       onChange={(e) => handleStatusChange(drive._id, e.target.value)}
                       style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                     >
-                      {['DRAFT', 'PUBLISHED', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
+                      <option value="REGISTRATION_OPEN">Open</option>
+                      <option value="REGISTRATION_CLOSED">Close</option>
                     </select>
                   </td>
                   <td style={tdStyle}>{drive.registeredStudents?.length || 0}</td>
+                  <td style={tdStyle}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleOpenEdit(drive)} style={{ padding: '6px 12px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>Edit</button>
+                      <button onClick={() => handleDelete(drive._id)} style={{ padding: '6px 12px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      
+      <CreateDriveModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onCreate={createDrive} 
+        onUpdate={updateDrive}
+        initialData={editingDrive}
+      />
     </div>
   );
 };

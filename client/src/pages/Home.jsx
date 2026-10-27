@@ -10,7 +10,7 @@ const StatBadge = ({ value, label }) => (
     background: 'var(--color-surface-raised)',
     border: '1px solid var(--color-border)',
     borderRadius: '12px',
-    minWidth: '120px',
+    minWidth: '130px',
   }}>
     <div style={{ fontSize: '1.75rem', fontWeight: 800, background: 'var(--gradient-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
       {value}
@@ -21,15 +21,18 @@ const StatBadge = ({ value, label }) => (
   </div>
 )
 
-const FeatureCard = ({ icon, title, description, color }) => (
+const PortalCard = ({ icon, role, title, description, color }) => (
   <div
     className="glass-card"
     style={{
-      padding: '2rem',
+      padding: '2.5rem 2rem',
       transition: 'var(--transition)',
       cursor: 'default',
       position: 'relative',
       overflow: 'hidden',
+      border: '1px solid var(--color-border)',
+      background: 'var(--color-surface)',
+      borderRadius: '16px',
     }}
     onMouseEnter={e => {
       e.currentTarget.style.transform = 'translateY(-6px)'
@@ -43,30 +46,33 @@ const FeatureCard = ({ icon, title, description, color }) => (
     }}
   >
     <div style={{
-      width: '48px',
-      height: '48px',
-      borderRadius: '12px',
+      width: '56px',
+      height: '56px',
+      borderRadius: '16px',
       background: color + '22',
       border: `1px solid ${color}44`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: '1.25rem',
-      fontSize: '1.5rem',
+      marginBottom: '1.5rem',
+      fontSize: '1.8rem',
     }}>
       {icon}
     </div>
-    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '0.6rem' }}>
+    <div style={{ fontSize: '0.85rem', fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+      For {role}
+    </div>
+    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '1rem', lineHeight: 1.3 }}>
       {title}
     </h3>
-    <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
+    <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
       {description}
     </p>
     {/* Accent line */}
     <div style={{
       position: 'absolute',
       top: 0, left: '2rem',
-      width: '40px', height: '2px',
+      width: '40px', height: '3px',
       background: color,
       borderRadius: '0 0 4px 4px',
     }} />
@@ -74,105 +80,27 @@ const FeatureCard = ({ icon, title, description, color }) => (
 )
 
 const StepCard = ({ number, title, description }) => (
-  <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start' }}>
+  <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
     <div style={{
       flexShrink: 0,
-      width: '44px', height: '44px',
-      borderRadius: '12px',
+      width: '48px', height: '48px',
+      borderRadius: '14px',
       background: 'var(--gradient-brand)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 800, fontSize: '1rem', color: 'var(--color-white)',
+      fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-white)',
       boxShadow: '0 4px 16px var(--color-brand-primary-shadow)',
     }}>
       {number}
     </div>
     <div>
-      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '0.35rem' }}>
+      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '0.4rem' }}>
         {title}
       </h4>
-      <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.65 }}>
+      <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
         {description}
       </p>
     </div>
   </div>
-)
-
-/* ── Mock Kanban Preview ───────────────────────────────────────────────────── */
-
-const KanbanPreview = () => {
-  const columns = [
-    { label: 'Applied', color: 'var(--color-applied)', cards: ['Software Engineer @ Google', 'Frontend Dev @ Stripe'] },
-    { label: 'Interview', color: 'var(--color-interview)', cards: ['Full Stack Dev @ Vercel'] },
-    { label: 'Offer 🎉', color: 'var(--color-offer)', cards: ['React Dev @ Shopify'] },
-  ]
-  return (
-    <div style={{
-      display: 'flex', gap: '0.85rem',
-      padding: '1.5rem',
-      background: 'var(--color-surface)',
-      borderRadius: '16px',
-      border: '1px solid var(--color-border)',
-      overflowX: 'auto',
-      minHeight: '220px',
-    }}>
-      {columns.map(col => (
-        <div key={col.label} style={{ flex: '1', minWidth: '170px' }}>
-          <div style={{
-            fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase',
-            letterSpacing: '0.1em', color: col.color,
-            marginBottom: '0.75rem', paddingBottom: '0.5rem',
-            borderBottom: `2px solid ${col.color}33`,
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-          }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: col.color, display: 'inline-block' }} />
-            {col.label}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {col.cards.map(card => (
-              <div key={card} style={{
-                padding: '0.75rem 0.9rem',
-                background: 'var(--color-surface-raised)',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                fontSize: '0.8rem',
-                fontWeight: 500,
-                color: 'var(--color-text-primary)',
-                cursor: 'grab',
-                transition: 'var(--transition)',
-              }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = col.color + '88'
-                  e.currentTarget.style.transform = 'translateX(3px)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'var(--color-border)'
-                  e.currentTarget.style.transform = 'translateX(0)'
-                }}
-              >
-                {card}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/* ── Nudge Alert Preview ───────────────────────────────────────────────────── */
-
-const NudgeAlert = () => (
-    <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-warning)', padding: '1rem 1.25rem', borderRadius: '12px', display: 'flex', gap: '1rem', alignItems: 'flex-start', boxShadow: 'var(--shadow-card)', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ fontSize: '1.5rem', marginTop: '0.2rem' }}>⚡</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-warning)', marginBottom: '0.2rem' }}>
-          Follow-up Needed
-        </div>
-        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>
-          Your application to <strong style={{ color: 'var(--color-text-primary)' }}>Software Engineer @ Google</strong> has been sitting for <strong style={{ color: 'var(--color-warning)' }}>9 days</strong> with no update. Time to follow up!
-        </p>
-      </div>
-    </div>
 )
 
 /* ── Main Home Page ────────────────────────────────────────────────────────── */
@@ -197,9 +125,9 @@ const Home = () => {
         {/* Background radial glow */}
         <div style={{
           position: 'absolute',
-          top: '30%', left: '50%',
+          top: '40%', left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: '600px', height: '600px',
+          width: '800px', height: '800px',
           borderRadius: '50%',
           background: 'var(--gradient-radial-glow)',
           pointerEvents: 'none',
@@ -212,21 +140,22 @@ const Home = () => {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.4rem 1rem',
+            gap: '0.6rem',
+            padding: '0.5rem 1.25rem',
             background: 'var(--color-brand-primary-light)',
             border: '1px solid var(--color-brand-primary-border)',
             borderRadius: '999px',
-            fontSize: '0.8rem',
-            fontWeight: 600,
+            fontSize: '0.85rem',
+            fontWeight: 700,
             color: 'var(--color-brand-primary)',
-            marginBottom: '1.5rem',
+            marginBottom: '2rem',
             position: 'relative',
             zIndex: 1,
+            boxShadow: '0 4px 12px rgba(37,99,235,0.1)'
           }}
         >
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-text-muted)', display: 'inline-block', animation: 'pulse-glow 2s infinite' }} />
-          Smart Job Application Tracker
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-brand-primary)', display: 'inline-block', animation: 'pulse-glow 2s infinite' }} />
+          The Intelligent Placement Platform
         </div>
 
         {/* Headline */}
@@ -235,192 +164,149 @@ const Home = () => {
             fontFamily: "'Plus Jakarta Sans', sans-serif",
             fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
             fontWeight: 900,
-            lineHeight: 1.1,
+            lineHeight: 1.15,
             letterSpacing: '-0.03em',
             color: 'var(--color-text-primary)',
-            maxWidth: '800px',
+            maxWidth: '900px',
             marginBottom: '1.5rem',
             position: 'relative',
             zIndex: 1,
           }}
         >
-          Never miss a{' '}
-          <span className="gradient-text">follow-up</span>
-          <br />opportunity again.
+          Unify your campus <br />
+          <span className="gradient-text">placement ecosystem.</span>
         </h1>
 
         {/* Sub-headline */}
         <p
           style={{
-            fontSize: 'clamp(1rem, 2vw, 1.2rem)',
+            fontSize: 'clamp(1.05rem, 2vw, 1.25rem)',
             color: 'var(--color-text-secondary)',
-            maxWidth: '560px',
-            lineHeight: 1.75,
-            marginBottom: '2.5rem',
+            maxWidth: '650px',
+            lineHeight: 1.7,
+            marginBottom: '3rem',
             position: 'relative',
             zIndex: 1,
           }}
         >
-          JobPulse tracks every application through your hiring pipeline and
-          automatically reminds you when a job goes stale — before the
-          opportunity passes you by.
+          JobPulse connects Placement Officers, Mentors, and Students on a single, AI-powered platform to drive career readiness, track applications, and maximize placement success.
         </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10 w-full sm:w-auto px-4 sm:px-0">
-          <Link to="/register" className="btn-primary w-full sm:w-auto" style={{ textDecoration: 'none', fontSize: '1rem', padding: '0.85rem 2rem' }}>
-            Start Tracking Free →
+          <Link to="/register" className="btn-primary w-full sm:w-auto" style={{ textDecoration: 'none', fontSize: '1.05rem', padding: '0.9rem 2.25rem' }}>
+            Get Started Free →
           </Link>
-          <a href="#features" className="btn-secondary w-full sm:w-auto" style={{ fontSize: '1rem', padding: '0.85rem 2rem', textDecoration: 'none', display: 'inline-block' }}>
-            See Features
+          <a href="#portals" className="btn-secondary w-full sm:w-auto" style={{ fontSize: '1.05rem', padding: '0.9rem 2.25rem', textDecoration: 'none', display: 'inline-block' }}>
+            Explore Portals
           </a>
         </div>
 
         {/* Stats Row */}
         <div style={{
           display: 'flex',
-          gap: '1rem',
+          gap: '1.5rem',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          marginTop: '4rem',
+          marginTop: '5rem',
           position: 'relative',
           zIndex: 1,
         }}>
-          <StatBadge value="6" label="Pipeline Stages" />
-          <StatBadge value="7d" label="Auto Follow-Up" />
-          <StatBadge value="∞" label="Applications" />
-          <StatBadge value="100%" label="Free to Use" />
-        </div>
-
-        {/* Kanban Preview Card */}
-        <div
-          style={{
-            marginTop: '4rem',
-            width: '100%',
-            maxWidth: '780px',
-            position: 'relative',
-            zIndex: 1,
-          }}
-        >
-          <div style={{
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--color-text-muted)',
-            marginBottom: '0.75rem',
-          }}>
-            Live Pipeline Preview
-          </div>
-          <div className="animate-float">
-            <KanbanPreview />
-            <div style={{ marginTop: '1rem' }}>
-              <NudgeAlert />
-            </div>
-          </div>
+          <StatBadge value="3" label="Dedicated Portals" />
+          <StatBadge value="1" label="Unified Database" />
+          <StatBadge value="AI" label="Career Copilot" />
+          <StatBadge value="100%" label="Visibility" />
         </div>
       </section>
 
-      {/* ── Features Section ─────────────────────────────────────────────── */}
-      <section id="features" style={{ padding: '6rem 1.5rem', maxWidth: '1100px', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+      {/* ── Portals Section ─────────────────────────────────────────────── */}
+      <section id="portals" style={{ padding: '6rem 1.5rem', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
+        <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <h2 style={{
             fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+            fontSize: 'clamp(2rem, 4vw, 3rem)',
             fontWeight: 800,
             letterSpacing: '-0.025em',
-            marginBottom: '1rem',
+            marginBottom: '1.25rem',
           }}>
-            Everything you need to{' '}
-            <span className="gradient-text">land the job</span>
+            One Platform.{' '}
+            <span className="gradient-text">Three Experiences.</span>
           </h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.05rem', maxWidth: '520px', margin: '0 auto' }}>
-            Built specifically for active job seekers juggling 10+ applications.
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
+            Purpose-built tools for every stakeholder in the placement journey.
           </p>
         </div>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1.25rem',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '2rem',
         }}>
-          <FeatureCard
-            icon="📋"
-            title="Application CRUD"
-            description="Log any job in under 30 seconds. Track company, role, URL, status, notes, and contact info all in one place."
+          <PortalCard
+            icon="🎓"
+            role="Students"
+            title="Execute & Prepare"
+            description="A personal command center to track applications, practice with AI mock interviews, build readiness scores, and manage placement drives."
             color="var(--color-brand-primary)"
           />
-          <FeatureCard
-            icon="🗂️"
-            title="Kanban Pipeline Board"
-            description="Drag and drop applications across 6 stages — Wishlist, Applied, Assessment, Interview, Offer, and Rejected."
-            color="var(--color-brand-secondary)"
+          <PortalCard
+            icon="👥"
+            role="Mentors"
+            title="Monitor & Guide"
+            description="Cohort dashboards to monitor student progress, track early intervention signals, review private notes, and guide students to success."
+            color="#10b981"
           />
-          <FeatureCard
-            icon="⚡"
-            title="Follow-Up Nudge Engine"
-            description="A daily cron job flags applications stuck in 'Applied' for 7+ days and emails you before the window closes."
-            color="var(--color-brand-accent)"
-          />
-          <FeatureCard 
-            icon="📝" 
-            title="Interview Preparation" 
-            description="Store notes, track technical rounds, and log questions asked in a centralized space."
-            color="var(--color-warning)"
-          />
-          <FeatureCard 
-            icon="🏆" 
-            title="Offer Negotiation" 
-            description="Compare multiple offers side-by-side with total compensation breakdowns."
-            color="var(--color-offer)"
-          />
-          <FeatureCard 
-            icon="📉" 
-            title="Rejection Analysis" 
-            description="Identify bottlenecks in your pipeline by seeing exactly where you fall out of the funnel."
-            color="var(--color-rejected)"
+          <PortalCard
+            icon="🏢"
+            role="Placement Officers"
+            title="Manage & Coordinate"
+            description="The institutional command center to broadcast placement drives, verify offers, analyze global analytics, and manage the entire pipeline."
+            color="#8b5cf6"
           />
         </div>
       </section>
 
       {/* ── How It Works ─────────────────────────────────────────────────── */}
-      <section id="how-it-works" style={{ padding: '6rem 1.5rem', background: 'var(--color-surface)' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+      <section id="how-it-works" style={{ padding: '7rem 1.5rem', background: 'var(--color-surface)' }}>
+        <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
             <h2 style={{
               fontFamily: "'Plus Jakarta Sans', sans-serif",
-              fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+              fontSize: 'clamp(2rem, 4vw, 3rem)',
               fontWeight: 800,
               letterSpacing: '-0.025em',
-              marginBottom: '1rem',
+              marginBottom: '1.25rem',
             }}>
-              How <span className="gradient-text">JobPulse</span> works
+              How <span className="gradient-text">JobPulse</span> flows
             </h2>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
+              Seamless data synchronization from the first application to the final offer.
+            </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
             <StepCard
               number="1"
-              title="Log your application"
-              description="Add any job in seconds — company, role, status, date applied, and notes. Your personal pipeline lives in the cloud."
+              title="Institution Connection"
+              description="Placement Officers set up the workspace. Mentors are onboarded, and Students seamlessly request connection to join their assigned cohort."
             />
-            <div style={{ width: '2px', height: '24px', background: 'var(--color-border)', marginLeft: '21px' }} />
+            <div style={{ width: '2px', height: '30px', background: 'var(--color-border)', marginLeft: '23px' }} />
             <StepCard
               number="2"
-              title="Visualize your pipeline"
-              description="Drag cards between stages on your Kanban board. See exactly where every application stands at a glance."
+              title="Preparation & Readiness"
+              description="Students leverage the AI Career Copilot to analyze their resume, take mock interviews, and build their Career Readiness profile."
             />
-            <div style={{ width: '2px', height: '24px', background: 'var(--color-border)', marginLeft: '21px' }} />
+            <div style={{ width: '2px', height: '30px', background: 'var(--color-border)', marginLeft: '23px' }} />
             <StepCard
               number="3"
-              title="Get nudged automatically"
-              description="JobPulse's engine runs daily and emails you when any application has gone quiet for too long — so you never miss a follow-up window."
+              title="Execution & Monitoring"
+              description="Students log applications and register for drives. Mentors instantly see cohort activity and act on automated Intervention Signals when students get stuck."
             />
-            <div style={{ width: '2px', height: '24px', background: 'var(--color-border)', marginLeft: '21px' }} />
+            <div style={{ width: '2px', height: '30px', background: 'var(--color-border)', marginLeft: '23px' }} />
             <StepCard
               number="4"
-              title="Track your momentum"
-              description="The dashboard shows your weekly application velocity, response rate, and conversion through each stage."
+              title="Verification & Success"
+              description="As offers roll in, Placement Officers verify placements and monitor real-time institutional analytics to report on placement success."
             />
           </div>
         </div>
@@ -428,39 +314,39 @@ const Home = () => {
 
       {/* ── CTA Banner ───────────────────────────────────────────────────── */}
       <section style={{
-        padding: '6rem 1.5rem',
+        padding: '7rem 1.5rem',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
       }}>
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.15) 0%, transparent 60%)',
+          background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.1) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
         <h2 style={{
           fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+          fontSize: 'clamp(2rem, 4vw, 3.2rem)',
           fontWeight: 800,
           letterSpacing: '-0.025em',
-          marginBottom: '1rem',
+          marginBottom: '1.25rem',
           position: 'relative',
           zIndex: 1,
         }}>
-          Ready to take control of your <span className="gradient-text">job search?</span>
+          Ready to elevate your <span className="gradient-text">placement process?</span>
         </h2>
         <p style={{
           color: 'var(--color-text-secondary)',
-          fontSize: '1.05rem',
-          marginBottom: '2rem',
+          fontSize: '1.1rem',
+          marginBottom: '2.5rem',
           position: 'relative', zIndex: 1,
         }}>
-          Free forever. No credit card required.
+          Join the institutions running their career centers on JobPulse.
         </p>
         <Link
           to="/register"
           className="btn-primary"
-          style={{ textDecoration: 'none', fontSize: '1.05rem', padding: '0.9rem 2.25rem', position: 'relative', zIndex: 1, display: 'inline-block' }}
+          style={{ textDecoration: 'none', fontSize: '1.1rem', padding: '1rem 2.5rem', position: 'relative', zIndex: 1, display: 'inline-block' }}
         >
           Create Your Free Account →
         </Link>
@@ -469,25 +355,25 @@ const Home = () => {
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer style={{
         borderTop: '1px solid var(--color-border)',
-        padding: '2rem 1.5rem',
+        padding: '2.5rem 1.5rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '1rem',
-        maxWidth: '1100px',
+        maxWidth: '1200px',
         margin: '0 auto',
       }}>
         <div style={{
           fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontWeight: 700,
-          fontSize: '1rem',
+          fontWeight: 800,
+          fontSize: '1.2rem',
           color: 'var(--color-text-secondary)',
         }}>
           Job<span className="gradient-text">Pulse</span>
         </div>
-        <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-          © {new Date().getFullYear()} JobPulse. Built with MERN stack.
+        <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+          © {new Date().getFullYear()} JobPulse. The Intelligent Placement Platform.
         </div>
       </footer>
     </main>

@@ -34,21 +34,65 @@ exports.getOpportunities = async (req, res) => {
   }
 };
 
+const OpportunityRecommendationService = require('../services/opportunityRecommendationService');
+const PlacementDrive = require('../models/PlacementDrive');
+
+// @desc    Get recommended opportunities for the student
+// @route   GET /api/opportunities/recommended
+// @access  Private (Student)
+exports.getRecommendedOpportunities = async (req, res) => {
+  try {
+    const institutionId = req.user.institutionId;
+    if (!institutionId) {
+      return res.status(400).json({ success: false, error: 'User does not belong to an institution' });
+    }
+
+    const recommendations = await OpportunityRecommendationService.getRecommendations(req.user);
+
+    res.json({ success: true, data: recommendations });
+  } catch (err) {
+    console.error('Error fetching recommended opportunities:', err);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+};
+
 // @desc    Get single opportunity
 // @route   GET /api/opportunities/:id
 // @access  Private
 exports.getOpportunity = async (req, res) => {
   try {
-    const opportunity = await Opportunity.findOne({
+    let opportunity = await Opportunity.findOne({
       _id: req.params.id,
       institutionId: req.user.institutionId
     }).lean();
+
+    let sourceModel = 'Opportunity';
+
+    if (!opportunity) {
+      // Try PlacementDrive
+      opportunity = await PlacementDrive.findOne({
+        _id: req.params.id,
+        institutionId: req.user.institutionId
+      }).lean();
+      sourceModel = 'PlacementDrive';
+    }
 
     if (!opportunity) {
       return res.status(404).json({ success: false, error: 'Opportunity not found' });
     }
 
-    opportunity.isTracked = opportunity.trackedBy ? opportunity.trackedBy.map(id => id.toString()).includes(req.user._id.toString()) : false;
+    if (sourceModel === 'Opportunity') {
+      opportunity.isTracked = opportunity.trackedBy ? opportunity.trackedBy.map(id => id.toString()).includes(req.user._id.toString()) : false;
+    } else {
+      // PlacementDrive standardizations
+      opportunity.title = opportunity.title || opportunity.jobRole;
+      opportunity.type = opportunity.employmentType;
+      opportunity.skills = opportunity.requiredSkills || [];
+      opportunity.deadline = opportunity.registrationEndDate;
+      opportunity.isTracked = false; // We can check applications if needed
+    }
+    
+    opportunity.sourceModel = sourceModel;
 
     res.json({ success: true, data: opportunity });
   } catch (err) {
@@ -62,18 +106,41 @@ exports.getOpportunity = async (req, res) => {
 // @access  Private (Student)
 exports.trackOpportunity = async (req, res) => {
   try {
-    const opportunity = await Opportunity.findOne({
+    let opportunity = await Opportunity.findOne({
       _id: req.params.id,
       institutionId: req.user.institutionId
     });
+    
+    let sourceModel = 'Opportunity';
+    
+    if (!opportunity) {
+      opportunity = await PlacementDrive.findOne({
+        _id: req.params.id,
+        institutionId: req.user.institutionId
+      });
+      sourceModel = 'PlacementDrive';
+    }
 
     if (!opportunity) {
       return res.status(404).json({ success: false, error: 'Opportunity not found' });
     }
+    
+    let existingApp = null;
+    if (sourceModel === 'Opportunity') {
+      existingApp = await Application.findOne({
+        user: req.user._id,
+        company: opportunity.company || 'Institution',
+        role: opportunity.title
+      });
+    } else {
+      existingApp = await Application.findOne({
+        user: req.user._id,
+        placementDriveId: opportunity._id
+      });
+    }
 
-    // Check if already tracked
-    if (opportunity.trackedBy && opportunity.trackedBy.includes(req.user._id)) {
-      return res.status(400).json({ success: false, error: 'Already tracked this opportunity' });
+    if (existingApp) {
+      return res.status(400).json({ success: false, error: 'Already applied or tracked this opportunity' });
     }
 
     // Create a new Application record
@@ -81,24 +148,65 @@ exports.trackOpportunity = async (req, res) => {
       user: req.user._id,
       institutionId: req.user.institutionId,
       company: opportunity.company || 'Institution',
-      role: opportunity.title,
+      role: opportunity.title || opportunity.jobRole,
       status: 'Wishlist',
-      url: opportunity.url,
-      location: opportunity.location,
-      salary: opportunity.salary,
-      source: opportunity.source || 'Institution Portal'
+      url: opportunity.url || '',
+      location: opportunity.location || 'TBD',
+      salary: opportunity.salary || opportunity.salaryRange || '',
+      source: 'Institution Portal',
+      placementDriveId: sourceModel === 'PlacementDrive' ? opportunity._id : null
     });
 
-    // Update opportunity trackedBy
-    if (!opportunity.trackedBy) {
-      opportunity.trackedBy = [];
+    // Update opportunity trackedBy if it's Opportunity model
+    if (sourceModel === 'Opportunity') {
+      if (!opportunity.trackedBy) opportunity.trackedBy = [];
+      if (!opportunity.trackedBy.includes(req.user._id)) {
+        opportunity.trackedBy.push(req.user._id);
+        await opportunity.save();
+      }
     }
-    opportunity.trackedBy.push(req.user._id);
-    await opportunity.save();
 
     res.status(201).json({ success: true, data: application });
   } catch (err) {
     console.error('Error tracking opportunity:', err);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+};
+
+// @desc    Untrack an opportunity
+// @route   DELETE /api/opportunities/:id/untrack
+// @access  Private (Student)
+exports.untrackOpportunity = async (req, res) => {
+  try {
+    const applicationId = req.body.applicationId;
+    
+    if (applicationId) {
+      await Application.deleteOne({ _id: applicationId, user: req.user._id, status: 'Wishlist' });
+    } else {
+      // Find and delete the wishlist application for this drive or opportunity
+      const opp = await Opportunity.findById(req.params.id) || await PlacementDrive.findById(req.params.id);
+      if (opp) {
+        await Application.deleteOne({ 
+          user: req.user._id, 
+          status: 'Wishlist',
+          $or: [
+            { placementDriveId: opp._id },
+            { company: opp.company, role: opp.title }
+          ]
+        });
+      }
+    }
+
+    // Update trackedBy in Opportunity model
+    const opportunity = await Opportunity.findById(req.params.id);
+    if (opportunity && opportunity.trackedBy) {
+      opportunity.trackedBy = opportunity.trackedBy.filter(id => id.toString() !== req.user._id.toString());
+      await opportunity.save();
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error untracking opportunity:', err);
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 };

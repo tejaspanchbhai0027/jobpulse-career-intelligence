@@ -1,9 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import BottomNav from './components/layout/BottomNav'
 import ProtectedRoute from './components/ProtectedRoute'
+import StudentLayout from './components/layout/StudentLayout'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -11,12 +12,15 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Applications from './pages/Applications'
+import PlacementUpdates from './pages/PlacementUpdates'
+import StudentNotices from './pages/StudentNotices'
 import Interviews from './pages/Interviews'
 import Resume from './pages/Resume'
 import Intelligence from './pages/Intelligence'
 import Tasks from './pages/Tasks'
 import CareerReadiness from './pages/CareerReadiness'
 import Opportunities from './pages/Opportunities'
+import OpportunityRadar from './pages/OpportunityRadar'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 import AdminRoute from './components/AdminRoute'
@@ -49,28 +53,27 @@ import MentorDashboard from './pages/mentor/MentorDashboard'
 import MentorStudents from './pages/mentor/MentorStudents'
 import MentorStudentProfile from './pages/mentor/MentorStudentProfile'
 import MentorApplications from './pages/mentor/MentorApplications'
-import MentorInterviews from './pages/mentor/MentorInterviews'
 import MentorInterventions from './pages/mentor/MentorInterventions'
-import MentorNotes from './pages/mentor/MentorNotes'
+import MentorBroadcasts from './pages/mentor/MentorBroadcasts'
 import MentorProgress from './pages/mentor/MentorProgress'
-import MentorIntelligence from './pages/mentor/MentorIntelligence'
+import MentorConnectionRequests from './pages/mentor/MentorConnectionRequests'
 import OfficerDashboard from './pages/officer/OfficerDashboard'
 import OfficerMentors from './pages/officer/OfficerMentors'
 import OfficerMentorDetails from './pages/officer/OfficerMentorDetails'
 import OfficerStudents from './pages/officer/OfficerStudents'
 import OfficerStudentProfile from './pages/officer/OfficerStudentProfile'
 import OfficerApplications from './pages/officer/OfficerApplications'
-import OfficerInterviews from './pages/officer/OfficerInterviews'
-import OfficerInterventions from './pages/officer/OfficerInterventions'
 import OfficerAnalytics from './pages/officer/OfficerAnalytics'
-import OfficerIntelligence from './pages/officer/OfficerIntelligence'
+import OfficerOffers from './pages/officer/OfficerOffers'
+import OfficerNotices from './pages/officer/OfficerNotices'
+import OfficerPlacedStudents from './pages/officer/OfficerPlacedStudents'
 import AdminPlacementDrives from './pages/admin/AdminPlacementDrives'
 import AdminPlacementReports from './pages/admin/AdminPlacementReports'
 import AdminPlacementVerification from './pages/admin/AdminPlacementVerification'
 import AdminPlacementAudit from './pages/admin/AdminPlacementAudit'
 import OfficerPlacementDrives from './pages/officer/OfficerPlacementDrives'
-import PlacementDrives from './pages/PlacementDrives'
-import { useLocation } from 'react-router-dom'
+
+
 import './index.css'
 
 // Redirects authenticated users away from /login and /register
@@ -111,7 +114,8 @@ function AppRoutes() {
   const isSuperAdminRoute = location.pathname.startsWith('/super-admin');
   const isMentorRoute = location.pathname.startsWith('/mentor');
   const isOfficerRoute = location.pathname.startsWith('/officer');
-  const hideNavbar = isAdminRoute || isSuperAdminRoute || isMentorRoute || isOfficerRoute;
+  const isStudentRoute = ['/dashboard', '/applications', '/placement-updates', '/interviews', '/notices', '/resume', '/intelligence', '/readiness', '/opportunities', '/settings'].some(p => location.pathname.startsWith(p));
+  const hideNavbar = isAdminRoute || isSuperAdminRoute || isMentorRoute || isOfficerRoute || isStudentRoute;
 
   return (
     <>
@@ -128,16 +132,19 @@ function AppRoutes() {
         <Route path="/reset-password/:token" element={<GuestRoute><ResetPassword /></GuestRoute>} />
 
         {/* Protected */}
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
-        <Route path="/interviews" element={<ProtectedRoute><Interviews /></ProtectedRoute>} />
-        <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-        <Route path="/resume" element={<ProtectedRoute><Resume /></ProtectedRoute>} />
-        <Route path="/intelligence" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
-        <Route path="/readiness" element={<ProtectedRoute><CareerReadiness /></ProtectedRoute>} />
-        <Route path="/opportunities" element={<ProtectedRoute><Opportunities /></ProtectedRoute>} />
-        <Route path="/placement-drives" element={<ProtectedRoute><PlacementDrives /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route element={<ProtectedRoute><StudentLayout /></ProtectedRoute>}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/applications" element={<Applications />} />
+          <Route path="/placement-updates" element={<PlacementUpdates />} />
+          <Route path="/notices" element={<StudentNotices />} />
+          <Route path="/interviews" element={<Interviews />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/resume" element={<Resume />} />
+          <Route path="/intelligence" element={<Intelligence />} />
+          <Route path="/readiness" element={<CareerReadiness />} />
+          <Route path="/opportunities" element={<OpportunityRadar />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
 
         {/* Admin Portal */}
         <Route path="/admin/login" element={<AdminGuestRoute><AdminLogin /></AdminGuestRoute>} />
@@ -174,6 +181,7 @@ function AppRoutes() {
           <Route path="/super-admin/institutions/:id" element={<SuperAdminRoute><SuperAdminInstitutionDetails /></SuperAdminRoute>} />
           <Route path="/super-admin/settings" element={<SuperAdminRoute><SuperAdminSettings /></SuperAdminRoute>} />
           <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
+          <Route path="/super_admin/*" element={<Navigate to="/super-admin/dashboard" replace />} />
         </Route>
 
         {/* Mentor Portal */}
@@ -182,11 +190,11 @@ function AppRoutes() {
           <Route path="/mentor/students" element={<MentorRoute><MentorStudents /></MentorRoute>} />
           <Route path="/mentor/students/:id" element={<MentorRoute><MentorStudentProfile /></MentorRoute>} />
           <Route path="/mentor/applications" element={<MentorRoute><MentorApplications /></MentorRoute>} />
-          <Route path="/mentor/interviews" element={<MentorRoute><MentorInterviews /></MentorRoute>} />
           <Route path="/mentor/interventions" element={<MentorRoute><MentorInterventions /></MentorRoute>} />
-          <Route path="/mentor/notes" element={<MentorRoute><MentorNotes /></MentorRoute>} />
+          <Route path="/mentor/broadcasts" element={<MentorRoute><MentorBroadcasts /></MentorRoute>} />
           <Route path="/mentor/progress" element={<MentorRoute><MentorProgress /></MentorRoute>} />
-          <Route path="/mentor/intelligence" element={<MentorRoute><MentorIntelligence /></MentorRoute>} />
+          <Route path="/mentor/requests" element={<MentorRoute><MentorConnectionRequests /></MentorRoute>} />
+          <Route path="/mentor/settings" element={<MentorRoute><Settings /></MentorRoute>} />
           <Route path="/mentor" element={<Navigate to="/mentor/dashboard" replace />} />
         </Route>
 
@@ -198,11 +206,12 @@ function AppRoutes() {
           <Route path="/officer/students" element={<OfficerRoute><OfficerStudents /></OfficerRoute>} />
           <Route path="/officer/students/:id" element={<OfficerRoute><OfficerStudentProfile /></OfficerRoute>} />
           <Route path="/officer/applications" element={<OfficerRoute><OfficerApplications /></OfficerRoute>} />
-          <Route path="/officer/interviews" element={<OfficerRoute><OfficerInterviews /></OfficerRoute>} />
-          <Route path="/officer/interventions" element={<OfficerRoute><OfficerInterventions /></OfficerRoute>} />
+          <Route path="/officer/placed-students" element={<OfficerRoute><OfficerPlacedStudents /></OfficerRoute>} />
+          <Route path="/officer/notices" element={<OfficerRoute><OfficerNotices /></OfficerRoute>} />
           <Route path="/officer/analytics" element={<OfficerRoute><OfficerAnalytics /></OfficerRoute>} />
-          <Route path="/officer/intelligence" element={<OfficerRoute><OfficerIntelligence /></OfficerRoute>} />
+          <Route path="/officer/settings" element={<OfficerRoute><Settings /></OfficerRoute>} />
           <Route path="/officer/placement-drives" element={<OfficerRoute><OfficerPlacementDrives /></OfficerRoute>} />
+          <Route path="/officer/offers" element={<OfficerRoute><OfficerOffers /></OfficerRoute>} />
           <Route path="/officer" element={<Navigate to="/officer/dashboard" replace />} />
         </Route>
 

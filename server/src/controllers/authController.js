@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const Institution = require('../models/Institution');
+const InstitutionConnectionRequest = require('../models/InstitutionConnectionRequest');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 // ── Helper: sign JWT ──────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ const sendTokenResponse = (user, statusCode, res) => {
       institutionId: user.institutionId,
       placementOfficerId: user.placementOfficerId,
       mentorId: user.mentorId,
+      connectionStatus: user.connectionStatus,
       followUpWindowDays: user.followUpWindowDays,
       jobSearchGoal: user.jobSearchGoal,
       emailNotifications: user.emailNotifications,
@@ -99,10 +101,36 @@ const register = async (req, res, next) => {
       name, 
       email, 
       password,
-      institutionId: institutionId || null,
-      placementOfficerId: placementOfficerId || null,
-      mentorId: mentorId || null
+      // We do not immediately connect the user if they provided institution details.
+      // The connection is handled via InstitutionConnectionRequest below.
+      institutionId: null,
+      placementOfficerId: null,
+      mentorId: null,
+      connectionStatus: institutionId ? 'PENDING' : 'NONE'
     });
+
+    if (institutionId && placementOfficerId && mentorId) {
+      await InstitutionConnectionRequest.create({
+        studentId: user._id,
+        institutionId,
+        placementOfficerId,
+        mentorId,
+        status: 'PENDING'
+      });
+      // Try to import notification service safely
+      try {
+        const { createNotification } = require('../services/notificationService');
+        await createNotification({
+          userId: mentorId,
+          type: 'SYSTEM',
+          title: 'New Student Connection Request',
+          message: `New student connection request from ${name}.`,
+          link: '/mentor/requests'
+        });
+      } catch (err) {
+        console.error('Failed to send connection request notification:', err);
+      }
+    }
     // ── Send welcome email asynchronously ─────────────────────────
     sendWelcomeEmail({ to: email, name, role: user.role }).catch(err => {
       console.error('[AuthController] Failed to send welcome email:', err);
@@ -184,6 +212,7 @@ const getMe = async (req, res, next) => {
         institutionId: user.institutionId,
         placementOfficerId: user.placementOfficerId,
         mentorId: user.mentorId,
+        connectionStatus: user.connectionStatus,
         followUpWindowDays: user.followUpWindowDays,
         jobSearchGoal: user.jobSearchGoal,
         emailNotifications: user.emailNotifications,
@@ -243,6 +272,7 @@ const updateSettings = async (req, res, next) => {
         email:              user.email,
         role:               user.role,
         institutionId:      user.institutionId,
+        connectionStatus:   user.connectionStatus,
         followUpWindowDays: user.followUpWindowDays,
         jobSearchGoal:      user.jobSearchGoal,
         emailNotifications: user.emailNotifications,
@@ -515,14 +545,45 @@ const connectInstitution = async (req, res, next) => {
       return next(new Error('Invalid or unauthorized mentor'));
     }
 
-    req.user.institutionId = institutionId;
-    req.user.placementOfficerId = placementOfficerId;
-    req.user.mentorId = mentorId;
-    
+    // Instead of assigning directly, create a request
+    const existingRequest = await InstitutionConnectionRequest.findOne({
+      studentId: req.user._id,
+      status: 'PENDING'
+    });
+
+    if (existingRequest) {
+      res.status(400);
+      return next(new Error('You already have a pending connection request'));
+    }
+
+    await InstitutionConnectionRequest.create({
+      studentId: req.user._id,
+      institutionId,
+      placementOfficerId,
+      mentorId,
+      status: 'PENDING'
+    });
+
+    req.user.connectionStatus = 'PENDING';
     await req.user.save();
+
+    // Notify the mentor
+    try {
+      const { createNotification } = require('../services/notificationService');
+      await createNotification({
+        userId: mentorId,
+        type: 'SYSTEM',
+        title: 'New Student Connection Request',
+        message: `New student connection request from ${req.user.name}.`,
+        link: '/mentor/requests'
+      });
+    } catch (err) {
+      console.error('Failed to send connection request notification:', err);
+    }
 
     res.status(200).json({
       success: true,
+      message: 'Connection request submitted successfully',
       data: req.user
     });
   } catch (error) {
@@ -554,6 +615,24 @@ const verifyEmail = async (req, res, next) => {
   }
 };
 
+// ── @route  GET /api/auth/connection-status ─────────────────────────────────
+// ── @desc   Get the latest connection request for the student
+// ── @access Private (Student)
+const getStudentConnectionStatus = async (req, res, next) => {
+  try {
+    const InstitutionConnectionRequest = require('../models/InstitutionConnectionRequest');
+    const request = await InstitutionConnectionRequest.findOne({ studentId: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate('institutionId', 'name')
+      .populate('placementOfficerId', 'name email')
+      .populate('mentorId', 'name email');
+      
+    res.status(200).json({ success: true, data: request });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -568,5 +647,6 @@ module.exports = {
   resetPassword,
   connectInstitution,
   sendVerificationEmail,
-  verifyEmail
+  verifyEmail,
+  getStudentConnectionStatus
 };

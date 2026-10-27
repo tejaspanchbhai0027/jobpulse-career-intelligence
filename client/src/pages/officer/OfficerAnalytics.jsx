@@ -36,11 +36,66 @@ const OfficerAnalytics = () => {
     );
   }
 
+  const handleExportReport = async () => {
+    try {
+      setLoading(true);
+      const [studentsRes, mentorsRes] = await Promise.all([
+        api.get('/officer/students?limit=5000'),
+        api.get('/officer/mentors')
+      ]);
+      const students = studentsRes.data.data || [];
+      const mentors = mentorsRes.data.data || [];
+      
+      const headers = ['Student Name', 'Email', 'Department', 'Class', 'Division', 'Mentor Name', 'Applications', 'Interviews', 'Offers'];
+      const csvRows = [headers.join(',')];
+      
+      students.forEach(s => {
+        const mentor = mentors.find(m => m._id === s.mentorId);
+        const row = [
+          `"${s.name}"`,
+          `"${s.email}"`,
+          `"${s.department || ''}"`,
+          `"${s.class || ''}"`,
+          `"${s.division || ''}"`,
+          `"${mentor ? mentor.name : 'Unassigned'}"`,
+          s.applicationCount || 0,
+          s.interviewCount || 0,
+          s.offerCount || 0
+        ];
+        csvRows.push(row.join(','));
+      });
+      
+      const csvString = csvRows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('hidden', '');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `Detail_Report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      setError('Failed to export report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>📈 Analytics Dashboard</h1>
-        <p style={{ color: 'var(--color-text-secondary)', margin: '0.5rem 0 0 0' }}>Data-driven insights for your institution's placement performance.</p>
+      <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>📈 Analytics & Reports</h1>
+          <p style={{ color: 'var(--color-text-secondary)', margin: '0.5rem 0 0 0' }}>Data-driven insights for your institution's placement performance.</p>
+        </div>
+        <button 
+          onClick={handleExportReport}
+          className="btn-primary"
+          style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', fontWeight: 600 }}
+        >
+          <span>📥</span> Download Detail Report
+        </button>
       </div>
 
       {/* KPI Row */}

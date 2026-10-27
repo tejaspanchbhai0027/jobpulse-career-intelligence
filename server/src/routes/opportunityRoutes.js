@@ -9,10 +9,16 @@ router.use(protect);
 router.route('/')
   .get(getOpportunities);
 
+router.route('/recommended')
+  .get(require('../controllers/opportunityController').getRecommendedOpportunities);
+
 router.route('/:id')
   .get(getOpportunity);
 
 router.route('/:id/track')
   .post(trackOpportunity);
+
+router.route('/:id/untrack')
+  .delete(require('../controllers/opportunityController').untrackOpportunity);
 
 module.exports = router;

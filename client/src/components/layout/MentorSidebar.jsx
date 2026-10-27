@@ -6,9 +6,9 @@ const MentorSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/admin/login');
   };
 
   const navStyles = ({ isActive }) => ({
@@ -77,41 +77,51 @@ const MentorSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
         
         <div style={{...sectionHeaderStyle, marginTop: 0}}>MAIN</div>
         <NavLink to="/mentor/dashboard" style={navStyles}>
-          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>▣</span> Command Center
+          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>▣</span> Dashboard
         </NavLink>
 
         <div style={sectionHeaderStyle}>STUDENTS</div>
         <NavLink to="/mentor/students" style={navStyles}>
           <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>🎓</span> My Students
         </NavLink>
+
+        <NavLink to="/mentor/requests" style={navStyles}>
+          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>👥</span> Requests
+        </NavLink>
+
         <NavLink to="/mentor/interventions" style={navStyles}>
-          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>⚠️</span> Attention Required
+          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>⚠️</span> Interventions
         </NavLink>
 
         <div style={sectionHeaderStyle}>PLACEMENT</div>
         <NavLink to="/mentor/applications" style={navStyles}>
           <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>📁</span> Applications
         </NavLink>
-        <NavLink to="/mentor/interviews" style={navStyles}>
-          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>🎤</span> Interviews
-        </NavLink>
 
         <div style={sectionHeaderStyle}>MENTORSHIP</div>
-        <NavLink to="/mentor/notes" style={navStyles}>
-          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>📝</span> Mentorship Notes
+        <NavLink to="/mentor/broadcasts" style={navStyles}>
+          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>📢</span> Broadcasts
         </NavLink>
 
-        <div style={sectionHeaderStyle}>INTELLIGENCE</div>
+        <div style={sectionHeaderStyle}>REPORTING</div>
         <NavLink to="/mentor/progress" style={navStyles}>
-          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>📈</span> Career Insights
+          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>📈</span> Progress
         </NavLink>
-        <NavLink to="/mentor/intelligence" style={navStyles}>
-          <span style={{ marginRight: '0.75rem', fontSize: '1rem' }}>🧠</span> Mentor Copilot
-        </NavLink>
-
       </nav>
 
-      <div style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
+      <div style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <button
+          onClick={() => navigate('/mentor/settings')}
+          style={{
+            width: '100%', padding: '0.65rem', background: 'transparent',
+            border: 'none', color: 'var(--color-text-secondary)',
+            fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.5rem', transition: 'var(--transition)'
+          }}
+        >
+          <span>⚙️</span> Settings
+        </button>
         <button
           onClick={handleLogout}
           style={{

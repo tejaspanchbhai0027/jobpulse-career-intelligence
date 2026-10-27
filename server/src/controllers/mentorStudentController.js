@@ -112,6 +112,7 @@ const getStudentOverview = async (req, res, next) => {
           batch: student.batch,
           department: student.department,
           profileCompletion: student.profileCompletionScore || 0,
+          lastUpdated: student.updatedAt || student.createdAt,
         },
         condition,
         pipeline,

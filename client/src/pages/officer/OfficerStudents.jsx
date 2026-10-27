@@ -85,7 +85,7 @@ const OfficerStudents = () => {
         return;
       }
       
-      const headers = ['Name', 'Email', 'Department', 'Mentor', 'Applications', 'Interviews', 'Offers', 'Open Issues'];
+      const headers = ['Name', 'Email', 'Department', 'Class', 'Division', 'Mentor', 'Applications', 'Interviews', 'Offers'];
       const csvRows = [headers.join(',')];
       
       allStudents.forEach(s => {
@@ -94,11 +94,12 @@ const OfficerStudents = () => {
           `"${s.name}"`,
           `"${s.email}"`,
           `"${s.department || ''}"`,
+          `"${s.class || ''}"`,
+          `"${s.division || ''}"`,
           `"${mentorName}"`,
           s.applicationCount || 0,
           s.interviewCount || 0,
-          s.offerCount || 0,
-          s.openInterventions || 0
+          s.offerCount || 0
         ];
         csvRows.push(row.join(','));
       });
@@ -198,12 +199,11 @@ const OfficerStudents = () => {
               <thead>
                 <tr style={{ background: 'var(--color-surface-overlay)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Student</th>
-                  <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Department</th>
+                  <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Course Info</th>
                   <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Mentor</th>
                   <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Apps</th>
                   <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Interviews</th>
                   <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Offers</th>
-                  <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Open Issues</th>
                   <th style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>Status</th>
                 </tr>
               </thead>
@@ -223,8 +223,11 @@ const OfficerStudents = () => {
                         <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{student.name}</div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{student.email}</div>
                       </td>
-                      <td style={{ padding: '1rem 1.5rem', color: 'var(--color-text-secondary)' }}>
-                        {student.department || '-'}
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <div style={{ color: 'var(--color-text-primary)' }}>{student.department || '-'}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                          {[student.class, student.division].filter(Boolean).join(' - ') || 'No Class/Div'}
+                        </div>
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
                         {assignedMentor ? (
@@ -241,9 +244,6 @@ const OfficerStudents = () => {
                       </td>
                       <td style={{ padding: '1rem 1.5rem', color: '#10b981', fontWeight: 600 }}>
                         {student.offerCount === null ? '🔒' : student.offerCount || 0}
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem', color: student.openInterventions > 0 ? '#f59e0b' : 'var(--color-text-secondary)', fontWeight: student.openInterventions > 0 ? 700 : 500 }}>
-                        {student.openInterventions || 0}
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
                         <span style={{ 

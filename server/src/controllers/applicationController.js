@@ -197,6 +197,13 @@ const deleteApplication = async (req, res, next) => {
       return next(new Error('Application not found'));
     }
 
+    if (application.placementDriveId) {
+      const PlacementDrive = require('../models/PlacementDrive');
+      await PlacementDrive.findByIdAndUpdate(application.placementDriveId, {
+        $pull: { registeredStudents: req.user.id }
+      });
+    }
+
     res.status(200).json({ success: true, message: 'Application deleted successfully' });
   } catch (error) {
     next(error);

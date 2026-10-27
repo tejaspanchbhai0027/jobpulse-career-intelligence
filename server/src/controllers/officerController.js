@@ -4,6 +4,7 @@ const Application = require('../models/Application');
 const Interview = require('../models/Interview');
 const InterventionSignal = require('../models/InterventionSignal');
 const copilotService = require('../services/intelligence/officerCopilotService');
+const InstitutionNotice = require('../models/InstitutionNotice');
 
 // ── @route  GET /api/officer/dashboard ─────────────────────────────────────────
 const getDashboardMetrics = async (req, res, next) => {
@@ -787,6 +788,77 @@ const queryCopilot = async (req, res, next) => {
   }
 };
 
+// ── @route  POST /api/officer/notices ───────────────────────────────────────
+const createNotice = async (req, res, next) => {
+  try {
+    const { targetAudience, title, message, priority } = req.body;
+    const institutionId = req.user.institutionId;
+    
+    if (!['STUDENTS', 'MENTORS', 'ALL'].includes(targetAudience)) {
+      res.status(400);
+      return next(new Error('Invalid target audience'));
+    }
+
+    const notice = await InstitutionNotice.create({
+      institutionId,
+      senderId: req.user._id,
+      targetAudience,
+      title,
+      message,
+      priority
+    });
+
+    res.status(201).json({ success: true, data: notice });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  GET /api/officer/notices ────────────────────────────────────────
+const getNotices = async (req, res, next) => {
+  try {
+    const institutionId = req.user.institutionId;
+    
+    const notices = await InstitutionNotice.find({ institutionId })
+      .populate('senderId', 'name email role')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: notices });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  PUT /api/officer/notices/:id ────────────────────────────────────
+const updateNotice = async (req, res, next) => {
+  try {
+    const { title, message, targetAudience, priority } = req.body;
+    const notice = await InstitutionNotice.findOneAndUpdate(
+      { _id: req.params.id, institutionId: req.user.institutionId },
+      { title, message, targetAudience, priority },
+      { new: true }
+    );
+    if (!notice) return res.status(404).json({ success: false, message: 'Notice not found' });
+    res.status(200).json({ success: true, data: notice });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @route  DELETE /api/officer/notices/:id ─────────────────────────────────
+const deleteNotice = async (req, res, next) => {
+  try {
+    const notice = await InstitutionNotice.findOneAndDelete({ 
+      _id: req.params.id, 
+      institutionId: req.user.institutionId 
+    });
+    if (!notice) return res.status(404).json({ success: false, message: 'Notice not found' });
+    res.status(200).json({ success: true, data: {} });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDashboardMetrics,
   getMentors,
@@ -796,5 +868,9 @@ module.exports = {
   getApplications,
   getInterventions,
   getAnalytics,
-  queryCopilot
+  queryCopilot,
+  createNotice,
+  getNotices,
+  updateNotice,
+  deleteNotice
 };

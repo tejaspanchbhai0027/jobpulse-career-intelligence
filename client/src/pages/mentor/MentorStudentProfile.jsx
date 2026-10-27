@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import CreateInterventionModal from '../../components/mentor/CreateInterventionModal';
 
 const MentorStudentProfile = () => {
   const { id } = useParams();
@@ -10,7 +9,6 @@ const MentorStudentProfile = () => {
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const fetchStudentProfile = async () => {
       try {
@@ -62,12 +60,6 @@ const MentorStudentProfile = () => {
         <button onClick={() => navigate('/mentor/students')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
           <span>←</span> Back to Students
         </button>
-        <button 
-          onClick={() => setShowCreateModal(true)}
-          style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          + Create Action Plan
-        </button>
       </div>
 
       {/* A. Student Overview */}
@@ -86,6 +78,7 @@ const MentorStudentProfile = () => {
             <span>📧 {student.email}</span>
             {student.department && <span>🏢 {student.department}</span>}
             {student.batch && <span>📅 Class of {student.batch}</span>}
+            {student.lastUpdated && <span>⏱️ Last active: {new Date(student.lastUpdated).toLocaleDateString()}</span>}
           </div>
           <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
             <strong>Condition Reason:</strong> {condition.reason}
@@ -197,17 +190,6 @@ const MentorStudentProfile = () => {
         </div>
 
       </div>
-
-      {showCreateModal && (
-        <CreateInterventionModal 
-          preSelectedStudentId={student._id}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            fetchStudentProfile();
-          }}
-        />
-      )}
     </div>
   );
 };

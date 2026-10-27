@@ -15,7 +15,8 @@ const useOpportunities = (filters = {}) => {
       if (filters.type) queryParams.append('type', filters.type);
       if (filters.workMode) queryParams.append('workMode', filters.workMode);
 
-      const res = await api.get(`/api/opportunities?${queryParams.toString()}`);
+      const endpoint = filters.recommended ? `/api/opportunities/recommended` : `/api/opportunities?${queryParams.toString()}`;
+      const res = await api.get(endpoint);
       setOpportunities(res.data.data);
     } catch (err) {
       console.error('Error fetching opportunities:', err);

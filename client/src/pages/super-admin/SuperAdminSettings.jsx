@@ -60,10 +60,10 @@ const SuperAdminSettings = () => {
         </div>
 
         {/* Clean Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+        <div className="superadmin-page-header">
           <div>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 300, color: 'var(--color-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>Global Settings</h1>
-            <p style={{ color: 'var(--color-text-secondary)', margin: '0.25rem 0 0 0', fontSize: '0.95rem', fontWeight: 500 }}>Manage platform infrastructure and integrations.</p>
+            <h1 className="superadmin-page-title">Global Settings</h1>
+            <p className="superadmin-page-subtitle">Manage platform infrastructure and integrations.</p>
           </div>
         </div>
 

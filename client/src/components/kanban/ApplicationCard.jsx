@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { calculateApplicationScore } from '../../utils/scoreCalculator'
+import OfferSubmitModal from '../modals/OfferSubmitModal'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
@@ -35,6 +36,7 @@ const JOB_TYPE_COLORS = {
 
 const ApplicationCard = ({ app, onEdit, onDelete, onUpdateApplication, columnColor = 'var(--color-wishlist)' }) => {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [offerModalOpen, setOfferModalOpen] = useState(false)
 
   const handleStatusChange = (e) => {
     onUpdateApplication(app._id, { status: e.target.value })
@@ -286,13 +288,77 @@ const ApplicationCard = ({ app, onEdit, onDelete, onUpdateApplication, columnCol
           </div>
         </div>
 
+        {/* Wishlist Apply Button */}
+        {app.status === 'Wishlist' && (
+          app.jobUrl ? (
+            <a 
+              href={app.jobUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'block', marginTop: '0.75rem', width: '100%', padding: '0.5rem', textAlign: 'center', 
+                background: 'var(--gradient-brand)', border: 'none', textDecoration: 'none',
+                borderRadius: '6px', color: '#fff', fontSize: '0.75rem', fontWeight: 700,
+                cursor: 'pointer', transition: 'var(--transition)'
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              Apply Externally ↗
+            </a>
+          ) : (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onUpdateApplication(app._id, { status: 'Applied', dateApplied: new Date().toISOString() }); }}
+              style={{ 
+                marginTop: '0.75rem', width: '100%', padding: '0.5rem', textAlign: 'center', 
+                background: 'var(--color-brand-primary)', border: 'none', 
+                borderRadius: '6px', color: '#fff', fontSize: '0.75rem', fontWeight: 700,
+                cursor: 'pointer', transition: 'var(--transition)'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--color-brand-primary-light)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--color-brand-primary)'}
+            >
+              Mark as Applied
+            </button>
+          )
+        )}
+
+
         {/* Contact line */}
         {app.contact && (
           <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.4rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             👤 {app.contact}
           </div>
         )}
+        {app.status === 'Offer' && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setOfferModalOpen(true); }}
+              style={{
+                width: '100%', padding: '0.5rem', background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px',
+                color: '#059669', fontSize: '0.8rem', fontWeight: 700,
+                cursor: 'pointer', transition: 'var(--transition)'
+              }}
+              onMouseEnter={e => e.target.style.background = 'rgba(16, 185, 129, 0.2)'}
+              onMouseLeave={e => e.target.style.background = 'rgba(16, 185, 129, 0.1)'}
+            >
+              Submit Offer Claim
+            </button>
+          </div>
+        )}
+
       </div>
+      
+      <OfferSubmitModal 
+        isOpen={offerModalOpen} 
+        onClose={() => setOfferModalOpen(false)} 
+        application={app} 
+        onSuccess={() => {
+          // Toast could be triggered here or reload
+          window.location.reload();
+        }} 
+      />
     </div>
   )
 }

@@ -6,9 +6,9 @@ const OfficerSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/admin/login');
   };
 
   const navStyles = ({ isActive }) => ({
@@ -75,20 +75,23 @@ const OfficerSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
         <NavLink to="/officer/applications" style={navStyles}>
           <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>📁</span> Applications
         </NavLink>
-        <NavLink to="/officer/interviews" style={navStyles}>
-          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>🎤</span> Interviews
-        </NavLink>
-        <NavLink to="/officer/interventions" style={navStyles}>
-          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>⚠️</span> Intervention Radar
-        </NavLink>
         <NavLink to="/officer/placement-drives" style={navStyles}>
           <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>📅</span> Placement Drives
         </NavLink>
-        <NavLink to="/officer/analytics" style={navStyles}>
-          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>📈</span> Analytics
+        <NavLink to="/officer/placed-students" style={navStyles}>
+          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>🎓</span> Placed Students
         </NavLink>
-        <NavLink to="/officer/intelligence" style={navStyles}>
-          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>🧠</span> Copilot
+        <NavLink to="/officer/notices" style={navStyles}>
+          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>📢</span> Broadcasts
+        </NavLink>
+        <NavLink to="/officer/offers" style={navStyles}>
+          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>🏆</span> Offer Verifications
+        </NavLink>
+        <NavLink to="/officer/analytics" style={navStyles}>
+          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>📈</span> Analytics & Reports
+        </NavLink>
+        <NavLink to="/officer/settings" style={navStyles}>
+          <span style={{ marginRight: '1rem', fontSize: '1.1rem' }}>⚙️</span> Settings
         </NavLink>
       </nav>
 

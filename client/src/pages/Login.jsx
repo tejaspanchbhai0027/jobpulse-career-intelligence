@@ -25,17 +25,28 @@ const Login = () => {
     try {
       const data = await login(form.email, form.password)
       
-      // We no longer log out non-students here. Instead, we let them proceed to /dashboard.
-      // The ProtectedRoute component will intercept non-students and redirect them to their correct portals 
-      // (e.g. /admin/dashboard, /officer/dashboard, etc.)
-      
-      // Proceed
-      navigate(from, { replace: true })
+      // Navigate to correct portal based on role
+      if (data.user?.role === 'SUPER_ADMIN') {
+        navigate('/super-admin/dashboard', { replace: true })
+      } else if (data.user?.role === 'PLACEMENT_OFFICER') {
+        navigate('/officer/dashboard', { replace: true })
+      } else if (data.user?.role === 'MENTOR') {
+        navigate('/mentor/dashboard', { replace: true })
+      } else if (data.user?.role === 'INSTITUTION_ADMIN') {
+        navigate('/admin/dashboard', { replace: true })
+      } else {
+        navigate(from, { replace: true })
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDemoFill = (demoEmail) => {
+    setForm({ email: demoEmail, password: 'password123' })
+    if (error) setError('')
   }
 
   return (
@@ -59,12 +70,12 @@ const Login = () => {
 
       <div style={{
         width: '100%',
-        maxWidth: '440px',
+        maxWidth: '480px',
         position: 'relative',
         zIndex: 1,
       }}>
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.6rem' }}>
             <div style={{
               width: '40px', height: '40px', borderRadius: '12px',
@@ -83,19 +94,143 @@ const Login = () => {
         </div>
 
         {/* Card */}
-        <div className="glass-card" style={{ padding: '2.5rem' }}>
+        <div className="glass-card" style={{ padding: '2.25rem' }}>
           <h1 style={{
             fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: '1.6rem', fontWeight: 800,
+            fontSize: '1.5rem', fontWeight: 800,
             letterSpacing: '-0.025em',
             color: 'var(--color-text-primary)',
-            marginBottom: '0.4rem',
+            marginBottom: '0.35rem',
           }}>
             Welcome back
           </h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
             Sign in to your JobPulse account
           </p>
+
+          {/* Demo Credentials Quick-Select */}
+          <div style={{
+            background: 'rgba(99, 102, 241, 0.06)',
+            border: '1px solid rgba(99, 102, 241, 0.22)',
+            borderRadius: '12px',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-brand-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                ⚡ Demo Logins (Click to Fill)
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                Pass: <code style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>password123</code>
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => handleDemoFill('student@jobpulse.com')}
+                style={{
+                  background: form.email === 'student@jobpulse.com' ? 'var(--color-brand-primary)' : 'var(--color-surface)',
+                  color: form.email === 'student@jobpulse.com' ? '#fff' : 'var(--color-text-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '0.5rem 0.6rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>🎓</span>
+                <div>
+                  <div style={{ lineHeight: 1.2 }}>Student</div>
+                  <div style={{ fontSize: '0.68rem', opacity: 0.8, fontWeight: 400 }}>student@jobpulse.com</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDemoFill('admin@jobpulse.com')}
+                style={{
+                  background: form.email === 'admin@jobpulse.com' ? 'var(--color-brand-primary)' : 'var(--color-surface)',
+                  color: form.email === 'admin@jobpulse.com' ? '#fff' : 'var(--color-text-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '0.5rem 0.6rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>🏫</span>
+                <div>
+                  <div style={{ lineHeight: 1.2 }}>Inst. Admin</div>
+                  <div style={{ fontSize: '0.68rem', opacity: 0.8, fontWeight: 400 }}>admin@jobpulse.com</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDemoFill('officer@jobpulse.com')}
+                style={{
+                  background: form.email === 'officer@jobpulse.com' ? 'var(--color-brand-primary)' : 'var(--color-surface)',
+                  color: form.email === 'officer@jobpulse.com' ? '#fff' : 'var(--color-text-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '0.5rem 0.6rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>👔</span>
+                <div>
+                  <div style={{ lineHeight: 1.2 }}>Officer</div>
+                  <div style={{ fontSize: '0.68rem', opacity: 0.8, fontWeight: 400 }}>officer@jobpulse.com</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDemoFill('mentor@jobpulse.com')}
+                style={{
+                  background: form.email === 'mentor@jobpulse.com' ? 'var(--color-brand-primary)' : 'var(--color-surface)',
+                  color: form.email === 'mentor@jobpulse.com' ? '#fff' : 'var(--color-text-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '0.5rem 0.6rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>🧭</span>
+                <div>
+                  <div style={{ lineHeight: 1.2 }}>Mentor</div>
+                  <div style={{ fontSize: '0.68rem', opacity: 0.8, fontWeight: 400 }}>mentor@jobpulse.com</div>
+                </div>
+              </button>
+            </div>
+          </div>
 
           {/* Error banner */}
           {error && (
@@ -220,12 +355,18 @@ const Login = () => {
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+          <p style={{ textAlign: 'center', marginTop: '1.25rem', color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
             Don't have an account?{' '}
             <Link to="/register" style={{ color: 'var(--color-brand-primary)', fontWeight: 600, textDecoration: 'none' }}>
               Create one free
             </Link>
           </p>
+
+          <div style={{ textAlign: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+            <Link to="/admin/login" style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', textDecoration: 'none' }}>
+              College Admin, Officer or Mentor? <span style={{ color: 'var(--color-brand-primary)', fontWeight: 600 }}>Command Center &rarr;</span>
+            </Link>
+          </div>
         </div>
       </div>
 

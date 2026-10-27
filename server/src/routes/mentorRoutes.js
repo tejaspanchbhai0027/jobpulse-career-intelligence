@@ -12,7 +12,12 @@ const {
   getNotes,
   createNote,
   updateNote,
-  deleteNote
+  deleteNote,
+  getStudentConnectionRequests,
+  getStudentConnectionRequestById,
+  approveStudentConnectionRequest,
+  rejectStudentConnectionRequest,
+  getNotices
 } = require('../controllers/mentorController');
 const { getStudents, getStudentById } = require('../controllers/adminStudentController');
 const { getStudentOverview, getStudentActivityTimeline } = require('../controllers/mentorStudentController');
@@ -83,5 +88,21 @@ router.put('/notes/:id', updateNote);
 
 // @route   DELETE /api/mentor/notes/:id
 router.delete('/notes/:id', deleteNote);
+
+// ── Student Connection Requests ──────────────────────────────────────────────
+// @route   GET /api/mentor/student-connection-requests
+router.get('/student-connection-requests', getStudentConnectionRequests);
+
+// @route   GET /api/mentor/student-connection-requests/:id
+router.get('/student-connection-requests/:id', getStudentConnectionRequestById);
+
+// @route   PATCH /api/mentor/student-connection-requests/:id/approve
+router.patch('/student-connection-requests/:id/approve', approveStudentConnectionRequest);
+
+// @route   PATCH /api/mentor/student-connection-requests/:id/reject
+router.patch('/student-connection-requests/:id/reject', rejectStudentConnectionRequest);
+
+// @route   GET /api/mentor/notices
+router.get('/notices', getNotices);
 
 module.exports = router;

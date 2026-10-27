@@ -124,6 +124,15 @@ const getStudents = async (req, res, next) => {
             }
           }
         }
+      },
+      // Lookup offer verifications for offer letters
+      {
+        $lookup: {
+          from: 'offerverifications',
+          localField: '_id',
+          foreignField: 'studentId',
+          as: 'offers'
+        }
       }
     ];
 
@@ -158,7 +167,8 @@ const getStudents = async (req, res, next) => {
           jobSearchGoal: 1,
           privacySettings: 1,
           mentorId: 1,
-          createdAt: 1
+          createdAt: 1,
+          offers: 1
         }
       }
     );

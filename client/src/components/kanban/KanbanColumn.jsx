@@ -1,6 +1,7 @@
 import ApplicationCard from './ApplicationCard'
+import PlacementDriveKanbanCard from './PlacementDriveKanbanCard'
 
-const KanbanColumn = ({ status, applications, onEdit, onDelete, onAddCard, onUpdateApplication }) => {
+const KanbanColumn = ({ status, applications, onEdit, onDelete, onAddCard, onUpdateApplication, placementDrives = [], onRegisterDrive }) => {
   return (
     <div
       style={{
@@ -33,15 +34,15 @@ const KanbanColumn = ({ status, applications, onEdit, onDelete, onAddCard, onUpd
           {/* Count badge */}
           <span style={{
             minWidth: '20px', height: '20px',
-            background: applications.length > 0 ? status.color + '22' : 'var(--color-surface-overlay)',
-            border: `1px solid ${applications.length > 0 ? status.color + '44' : 'var(--color-border)'}`,
+            background: (applications.length + placementDrives.length) > 0 ? status.color + '22' : 'var(--color-surface-overlay)',
+            border: `1px solid ${(applications.length + placementDrives.length) > 0 ? status.color + '44' : 'var(--color-border)'}`,
             borderRadius: '999px',
             fontSize: '0.7rem', fontWeight: 800,
-            color: applications.length > 0 ? status.color : 'var(--color-text-muted)',
+            color: (applications.length + placementDrives.length) > 0 ? status.color : 'var(--color-text-muted)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 0.3rem',
           }}>
-            {applications.length}
+            {applications.length + placementDrives.length}
           </span>
           {/* Add button */}
           <button
@@ -79,6 +80,14 @@ const KanbanColumn = ({ status, applications, onEdit, onDelete, onAddCard, onUpd
           scrollbarWidth: 'thin',
         }}
       >
+        {placementDrives.map(drive => (
+          <PlacementDriveKanbanCard
+            key={drive._id}
+            drive={drive}
+            onRegister={onRegisterDrive}
+            columnColor={status.color}
+          />
+        ))}
         {applications.map(app => (
           <ApplicationCard
             key={app._id}
@@ -91,7 +100,7 @@ const KanbanColumn = ({ status, applications, onEdit, onDelete, onAddCard, onUpd
         ))}
 
         {/* Empty state */}
-        {applications.length === 0 && (
+        {applications.length === 0 && placementDrives.length === 0 && (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '2rem 1rem', gap: '0.5rem',

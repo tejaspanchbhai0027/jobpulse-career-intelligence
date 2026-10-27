@@ -1,9 +1,15 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/admin/login');
+  };
 
   const links = [
     { to: '/admin/dashboard', label: 'Placement Command Center', icon: '📊' },
@@ -91,7 +97,7 @@ const AdminSidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       {/* Logout Button */}
       <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)' }}>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           style={{
             width: '100%',
             display: 'flex',

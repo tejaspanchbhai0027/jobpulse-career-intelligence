@@ -10,6 +10,21 @@ const Navbar = () => {
   const location  = useLocation()
   const { theme, toggleTheme } = useTheme()
 
+  // Define role-based paths
+  const getDashboardPath = () => {
+    if (!isAuthenticated || !user) return '/';
+    if (user.role === 'MENTOR') return '/mentor/dashboard';
+    if (user.role === 'PLACEMENT_OFFICER' || user.role === 'INSTITUTION_ADMIN') return '/officer/dashboard';
+    if (user.role === 'SUPER_ADMIN') return '/admin/dashboard';
+    return '/dashboard';
+  };
+
+  const getSettingsPath = () => {
+    if (user?.role === 'MENTOR') return '/mentor/settings';
+    if (user?.role === 'PLACEMENT_OFFICER' || user?.role === 'INSTITUTION_ADMIN') return '/officer/settings';
+    return '/settings';
+  };
+
   // Hide landing-style nav links on auth/dashboard pages
   const isAuthPage = ['/login', '/register', '/dashboard'].some(p => location.pathname.startsWith(p))
 
@@ -69,7 +84,7 @@ const Navbar = () => {
       }}>
         {/* Left: Logo */}
         <Link
-          to={isAuthenticated ? '/dashboard' : '/'}
+          to={getDashboardPath()}
           style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}
         >
           <div style={{
@@ -94,16 +109,33 @@ const Navbar = () => {
         </Link>
 
         {/* Center: Navigation */}
-        {isAuthenticated && (
+        {isAuthenticated && user?.role === 'STUDENT' && (
           <div className="hidden lg:flex items-center justify-center gap-1" style={{ flex: '1 1 auto', overflow: 'hidden' }}>
+            <Link to="/opportunities" style={linkStyle} {...linkHover}>Opportunities</Link>
             <Link to="/applications" style={linkStyle} {...linkHover}>Applications</Link>
-            <Link to="/interviews" style={linkStyle} {...linkHover}>Interviews</Link>
             <Link to="/resume" style={linkStyle} {...linkHover}>Resume</Link>
             <Link to="/tasks" style={linkStyle} {...linkHover}>Tasks</Link>
-            <Link to="/opportunities" style={linkStyle} {...linkHover}>Opportunities</Link>
-            <Link to="/placement-drives" style={linkStyle} {...linkHover}>Drives</Link>
             <Link to="/readiness" style={linkStyle} {...linkHover}>Readiness</Link>
             <Link to="/settings" style={linkStyle} {...linkHover}>Settings</Link>
+          </div>
+        )}
+
+        {isAuthenticated && user?.role === 'MENTOR' && (
+          <div className="hidden lg:flex items-center justify-center gap-1" style={{ flex: '1 1 auto', overflow: 'hidden' }}>
+            <Link to="/mentor/dashboard" style={linkStyle} {...linkHover}>Dashboard</Link>
+            <Link to="/mentor/students" style={linkStyle} {...linkHover}>My Students</Link>
+            <Link to="/mentor/interventions" style={linkStyle} {...linkHover}>Interventions</Link>
+            <Link to="/mentor/settings" style={linkStyle} {...linkHover}>Settings</Link>
+          </div>
+        )}
+
+        {isAuthenticated && (user?.role === 'PLACEMENT_OFFICER' || user?.role === 'INSTITUTION_ADMIN') && (
+          <div className="hidden lg:flex items-center justify-center gap-1" style={{ flex: '1 1 auto', overflow: 'hidden' }}>
+            <Link to="/officer/dashboard" style={linkStyle} {...linkHover}>Dashboard</Link>
+            <Link to="/officer/students" style={linkStyle} {...linkHover}>Students</Link>
+            <Link to="/officer/placement-drives" style={linkStyle} {...linkHover}>Placement Drives</Link>
+            <Link to="/officer/offers" style={linkStyle} {...linkHover}>Offers</Link>
+            <Link to="/officer/settings" style={linkStyle} {...linkHover}>Settings</Link>
           </div>
         )}
 
@@ -141,7 +173,7 @@ const Navbar = () => {
               <div className="hidden sm:block" style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 0.25rem', flexShrink: 0 }} />
               {/* User avatar + name */}
               <button
-                onClick={() => navigate('/settings')}
+                onClick={() => navigate(getSettingsPath())}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.5rem',
                   padding: '0.35rem 0.75rem',
@@ -187,8 +219,8 @@ const Navbar = () => {
           <>
             {!isAuthPage && (
               <div className="hidden md:flex items-center">
-                <a href="#features" style={linkStyle} {...linkHover}>Features</a>
-                <a href="#how-it-works" style={linkStyle} {...linkHover}>How it works</a>
+                <a href="#portals" style={linkStyle} {...linkHover}>Portals</a>
+                <a href="#how-it-works" style={linkStyle} {...linkHover}>How it flows</a>
                 <div style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 0.25rem' }} />
               </div>
             )}

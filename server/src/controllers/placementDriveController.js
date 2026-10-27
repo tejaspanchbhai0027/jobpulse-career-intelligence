@@ -11,10 +11,16 @@ exports.createDrive = async (req, res, next) => {
   try {
     const institutionId = req.user.institutionId;
     
-    const drive = await PlacementDrive.create({
+    const driveData = {
       ...req.body,
       institutionId
-    });
+    };
+
+    if (req.user.role === 'PLACEMENT_OFFICER' && !driveData.assignedPlacementOfficerId) {
+      driveData.assignedPlacementOfficerId = req.user._id;
+    }
+
+    const drive = await PlacementDrive.create(driveData);
 
     // Generate Audit Log
     await PlacementAudit.create({
@@ -287,11 +293,7 @@ exports.registerForDrive = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'You are already registered for this drive' });
     }
 
-    // Begin Registration & Application Generation
-    drive.registeredStudents.push(req.user._id);
-    await drive.save();
-
-    // Create linked Application
+    // Create linked Application FIRST (so if it fails, we don't leave orphans)
     const application = await Application.create({
       user: req.user._id,
       placementDriveId: drive._id,
@@ -303,6 +305,10 @@ exports.registerForDrive = async (req, res, next) => {
       salary: drive.salaryRange,
       jobDescription: drive.jobDescription
     });
+
+    // Begin Registration
+    drive.registeredStudents.push(req.user._id);
+    await drive.save();
 
     res.status(200).json({ success: true, message: 'Successfully registered for the drive', data: application });
   } catch (error) {
@@ -392,8 +398,10 @@ exports.deleteDrive = async (req, res, next) => {
     }
 
     const isAdmin = ['INSTITUTION_ADMIN', 'SUPER_ADMIN'].includes(req.user.role);
-    if (!isAdmin) {
-      return res.status(403).json({ success: false, message: 'Only administrators can delete placement drives' });
+    const isPO = req.user.role === 'PLACEMENT_OFFICER';
+    
+    if (!isAdmin && !isPO) {
+      return res.status(403).json({ success: false, message: 'Only administrators or placement officers can delete placement drives' });
     }
 
     // Delete associated applications

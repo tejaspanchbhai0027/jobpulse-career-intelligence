@@ -54,6 +54,10 @@ const resumeSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    atsScore: {
+      type: Number,
+      default: 0,
+    },
     analysis: {
       type: mongoose.Schema.Types.Mixed,
       default: {},

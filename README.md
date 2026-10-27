@@ -108,16 +108,8 @@ RESEND_API_KEY=re_your_resend_api_key
 FROM_EMAIL=JobPulse <onboarding@resend.dev>
 ```
 
-### 3. Run Automated Tests
 
-Run the full backend test suite to verify route handlers, Zod validation schemas, and database operations:
-
-```bash
-cd server
-npm test
-```
-
-### 4. Run Development Servers
+### 3. Run Development Servers
 
 **Terminal 1 (Backend API):**
 ```bash

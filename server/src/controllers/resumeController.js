@@ -56,19 +56,34 @@ const uploadResume = asyncHandler(async (req, res) => {
       extractedText = data.text;
     } catch (err) {
       console.error('PDF parsing error:', err);
-      // We don't block the upload, we just leave extractedText empty
     }
   }
 
   // Simple deterministic skill extraction fallback
   const commonSkills = ['JavaScript', 'React', 'Node.js', 'Python', 'Java', 'SQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes'];
-  const skills = [];
+  let skills = [];
   if (extractedText) {
     commonSkills.forEach(skill => {
       if (extractedText.toLowerCase().includes(skill.toLowerCase())) {
         skills.push(skill);
       }
     });
+  }
+
+  // ATS Analysis
+  let atsAnalysis = { status: 'extracted', wordCount: extractedText.split(/\s+/).length };
+  let atsScore = 0;
+  
+  if (extractedText) {
+    try {
+      const { analyzeResumeATS } = require('../services/aiService');
+      const analysisResult = await analyzeResumeATS(extractedText, targetRole);
+      atsAnalysis = { ...atsAnalysis, ...analysisResult };
+      atsScore = analysisResult.score || 0;
+    } catch (error) {
+      console.error('ATS Analysis failed during upload:', error.message);
+      atsAnalysis.error = 'ATS Analysis could not be generated. Please try analyzing again.';
+    }
   }
 
   // Count existing resumes to set version
@@ -91,10 +106,8 @@ const uploadResume = asyncHandler(async (req, res) => {
     isDefault,
     extractedText,
     skills,
-    analysis: {
-      status: 'extracted',
-      wordCount: extractedText.split(/\s+/).length
-    }
+    atsScore,
+    analysis: atsAnalysis
   });
 
   res.status(201).json({
@@ -195,11 +208,105 @@ const deleteResume = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Download resume
+// @route   GET /api/resumes/:id/download
+// @access  Private
+const downloadResume = asyncHandler(async (req, res) => {
+  const resume = await Resume.findOne({ _id: req.params.id, user: req.user._id });
+  if (!resume) {
+    res.status(404);
+    throw new Error('Resume not found');
+  }
+
+  const filePath = path.join(uploadDir, resume.storageKey);
+  if (!fs.existsSync(filePath)) {
+    res.status(404);
+    throw new Error('File not found on server');
+  }
+
+  res.download(filePath, resume.fileName);
+});
+
+// @desc    Re-analyze resume for ATS compatibility
+// @route   POST /api/resumes/:id/analyze
+// @access  Private
+const analyzeResumeATSController = asyncHandler(async (req, res) => {
+  const resume = await Resume.findOne({ _id: req.params.id, user: req.user._id });
+  if (!resume) {
+    res.status(404);
+    throw new Error('Resume not found');
+  }
+
+  // If text is missing, try to extract it again
+  if (!resume.extractedText) {
+    const filePath = path.join(uploadDir, resume.storageKey);
+    if (fs.existsSync(filePath)) {
+      try {
+        const dataBuffer = fs.readFileSync(filePath);
+        const data = await pdfParse(dataBuffer);
+        resume.extractedText = data.text;
+      } catch (err) {
+        console.error('PDF parsing error during re-analyze:', err);
+      }
+    }
+  }
+
+  if (!resume.extractedText) {
+    res.status(400);
+    throw new Error('Resume text is empty and could not be extracted, cannot analyze.');
+  }
+
+  const { analyzeResumeATS } = require('../services/aiService');
+  const analysisResult = await analyzeResumeATS(resume.extractedText, resume.targetRole);
+  
+  resume.atsScore = analysisResult.score || 0;
+  resume.analysis = {
+    ...resume.analysis,
+    ...analysisResult,
+    status: 'analyzed'
+  };
+
+  await resume.save();
+
+  res.status(200).json({
+    success: true,
+    data: resume
+  });
+});
+
+// @desc    Compare resume against Job Description
+// @route   POST /api/resumes/:id/jd-match
+// @access  Private
+const matchJD = asyncHandler(async (req, res) => {
+  const { jobDescription } = req.body;
+  if (!jobDescription) {
+    res.status(400);
+    throw new Error('Job description is required');
+  }
+
+  const resume = await Resume.findOne({ _id: req.params.id, user: req.user._id });
+  if (!resume || !resume.extractedText) {
+    res.status(404);
+    throw new Error('Resume text not available');
+  }
+
+  const { matchResume } = require('../services/aiService');
+  const matchResult = await matchResume(jobDescription, resume.extractedText);
+
+  res.status(200).json({
+    success: true,
+    data: matchResult
+  });
+});
+
 module.exports = {
   getResumes,
   uploadResume,
   getResume,
   setDefaultResume,
   updateResume,
-  deleteResume
+  deleteResume,
+  downloadResume,
+  analyzeResumeATSController,
+  matchJD
 };

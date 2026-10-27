@@ -58,6 +58,9 @@ const updateSettingsSchema = z.object({
   linkedinUrl:        z.string().trim().optional(), // Could add URL validation, keeping it loose for now
   githubUrl:          z.string().trim().optional(),
   portfolioUrl:       z.string().trim().optional(),
+  department:         z.string().trim().optional(),
+  class:              z.string().trim().optional(),
+  division:           z.string().trim().optional(),
   targetRoles:        z.array(z.string()).optional(),
   targetSalary:       z.string().optional(),
   employmentTypes:    z.array(z.string()).optional(),

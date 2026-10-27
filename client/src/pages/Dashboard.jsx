@@ -6,23 +6,33 @@ import { useAllInterviews } from '../hooks/useInterviews';
 import useTasks from '../hooks/useTasks';
 import useReadiness from '../hooks/useReadiness';
 import useOpportunities from '../hooks/useOpportunities';
+import usePlacementDrives from '../hooks/usePlacementDrives';
+import api from '../api/axios';
 
 const StatCard = ({ label, value, color, icon }) => (
   <div style={{
-    display: 'flex', flexDirection: 'column', gap: '0.75rem',
+    display: 'flex', flexDirection: 'column', gap: '1rem',
     padding: '24px',
-    background: 'var(--color-surface)',
+    background: 'linear-gradient(145deg, var(--color-surface) 0%, rgba(255,255,255,0.01) 100%)',
     border: `1px solid var(--color-border)`,
-    borderRadius: '18px',
+    borderTop: `3px solid ${color}`,
+    borderRadius: '16px',
     flex: 1,
-    minWidth: '180px',
-    boxShadow: 'var(--shadow-card)',
+    minWidth: '200px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+    position: 'relative',
+    overflow: 'hidden'
   }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>{label}</div>
-      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: color + '15', color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>{icon}</div>
+    <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '80px', height: '80px', background: `${color}10`, borderRadius: '50%', filter: 'blur(20px)' }}></div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: `${color}15`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {icon}
+      </div>
     </div>
-    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1 }}>{value}</div>
+    <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-text-primary)', lineHeight: 1, letterSpacing: '-0.02em', position: 'relative', zIndex: 1 }}>
+      {value}
+    </div>
   </div>
 );
 
@@ -44,7 +54,21 @@ const Dashboard = () => {
   const { interviews: allInterviews } = useAllInterviews();
   const { tasks, loading: tasksLoading } = useTasks();
   const { data: readinessData, loading: readinessLoading } = useReadiness();
-  const { opportunities } = useOpportunities();
+  const { opportunities } = useOpportunities({ recommended: true });
+  const { drives } = usePlacementDrives();
+  const activeDrives = useMemo(() => drives?.filter(d => d.status === 'PUBLISHED' || d.status === 'REGISTRATION_OPEN') || [], [drives]);
+
+  const [connectionReq, setConnectionReq] = React.useState(null);
+
+  React.useEffect(() => {
+    if (user?.connectionStatus === 'PENDING' || user?.connectionStatus === 'REJECTED') {
+      api.get('/auth/connection-status').then(({ data }) => {
+        if (data.success && data.data) {
+          setConnectionReq(data.data);
+        }
+      }).catch(err => console.error('Failed to load connection status:', err));
+    }
+  }, [user]);
 
   // ── Metrics Calculation ──
   const stats = useMemo(() => {
@@ -134,250 +158,218 @@ const Dashboard = () => {
     );
   }
 
-  const currentDate = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
   return (
-    <div className="page-container" style={{ minHeight: '100vh', background: 'var(--color-bg)', padding: '32px', paddingTop: 'max(96px, env(safe-area-inset-top, 0px))', paddingBottom: '100px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+    <div className="page-container" style={{ minHeight: '100vh', background: 'var(--color-bg)', padding: '36px' }}>
+      <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '32px' }}>
         
-        {/* HEADER */}
-        <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
-            Welcome back, {user?.name?.split(' ')[0] || 'Student'}
-          </h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginTop: '0.25rem' }}>
-            {currentDate} • Here is your career pipeline overview.
-          </p>
-        </div>
-
-        {/* HERO: NEXT BEST ACTION */}
-        <div style={{ 
-          background: 'var(--color-surface)', 
-          padding: '32px', 
-          borderRadius: '18px', 
-          border: '1px solid var(--color-border)', 
-          boxShadow: 'var(--shadow-card)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: '1rem'
-        }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-brand-primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{action.label}</div>
-          <div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>{action.title}</h2>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', maxWidth: '600px' }}>{action.desc}</p>
-          </div>
-          <button onClick={() => navigate(action.link)} className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.85rem 2rem', borderRadius: '999px', fontSize: '0.95rem' }}>
-            {action.cta}
-          </button>
-        </div>
-
-        {/* KPI CARDS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
-          <StatCard label="Total Applications" value={stats.total} color="var(--color-text-primary)" icon="📋" />
-          <StatCard label="In Progress" value={stats.inProgress} color="var(--color-brand-primary)" icon="🚀" />
-          <StatCard label="Upcoming Interviews" value={upcomingInterviews.length} color="#10b981" icon="🎙️" />
-          <StatCard label="Offers" value={stats.offers} color="#f59e0b" icon="🎉" />
-        </div>
-
-        {/* ACTION CENTER: OVERDUE & NEXT ACTIONS */}
-        {(overdueItems.length > 0 || nextActions.length > 0) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
-            {overdueItems.length > 0 && (
-              <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '18px', border: '1px solid rgba(239, 68, 68, 0.3)', boxShadow: 'var(--shadow-card)' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px', color: '#ef4444' }}>⚠️ Overdue Items</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {overdueItems.map(item => (
-                    <div key={item.id} onClick={() => navigate(item.link)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--color-surface-overlay)', borderRadius: '12px', cursor: 'pointer' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.title}</span>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(item.date).toLocaleDateString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '18px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)', flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Upcoming Actions</h3>
-                <button onClick={() => navigate('/tasks')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>View All Tasks ↗</button>
-              </div>
-              
-              {nextActions.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {nextActions.map(item => (
-                    <div key={item.id} onClick={() => navigate(item.link)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--color-surface-overlay)', borderRadius: '12px', cursor: 'pointer' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-brand-primary)' }} />
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.title}</span>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{item.date ? new Date(item.date).toLocaleDateString() : 'No date'}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>No upcoming actions. You're all caught up!</div>
-              )}
+        {connectionReq && connectionReq.status === 'PENDING' && (
+          <div style={{ padding: '16px 24px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '12px', color: '#b45309', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '1.25rem' }}>⏳</span>
+            <div>
+              <div style={{ fontWeight: 600 }}>Connection Request Pending</div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Your request to join {connectionReq.institutionId?.name || 'Institution'} is pending approval from {connectionReq.mentorId?.name || 'Mentor'}.</div>
             </div>
           </div>
         )}
 
-        {/* MIDDLE ROW: READINESS & QUICK ACTIONS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
-          {/* Career Readiness Widget */}
-          <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '18px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.5rem' }}>Career Readiness</h3>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                {!readinessData ? 'Loading...' : (readinessData.profile?.percentage === 100 
-                  ? 'Your profile is fully complete! See your full readiness report.'
-                  : `Your profile is missing important fields like ${readinessData.profile?.missing[0] || 'Resume'}.`)}
-              </p>
-              <button onClick={() => navigate('/readiness')} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>View Full Report</button>
-            </div>
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--color-surface-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `4px solid ${!readinessData ? '#ccc' : (readinessData.profile?.percentage > 80 ? '#10b981' : readinessData.profile?.percentage > 50 ? '#f59e0b' : '#ef4444')}` }}>
-              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{readinessData?.profile?.percentage || 0}%</span>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '18px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px' }}>Quick Actions</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <button onClick={() => navigate('/applications')} style={{ background: 'var(--color-surface-overlay)', border: '1px solid var(--color-border)', padding: '1rem', borderRadius: '12px', color: 'var(--color-text-primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }} onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-brand-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
-                ➕ Add Application
-              </button>
-              <button onClick={() => navigate('/resume')} style={{ background: 'var(--color-surface-overlay)', border: '1px solid var(--color-border)', padding: '1rem', borderRadius: '12px', color: 'var(--color-text-primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }} onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-brand-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
-                📄 Upload Resume
-              </button>
-              <button onClick={() => navigate('/interviews')} style={{ background: 'var(--color-surface-overlay)', border: '1px solid var(--color-border)', padding: '1rem', borderRadius: '12px', color: 'var(--color-text-primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }} onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-brand-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
-                📅 Log Interview
-              </button>
-              <button onClick={() => navigate('/settings')} style={{ background: 'var(--color-surface-overlay)', border: '1px solid var(--color-border)', padding: '1rem', borderRadius: '12px', color: 'var(--color-text-primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }} onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-brand-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
-                ⚙️ Edit Profile
-              </button>
-            </div>
-          </div>
+        {/* HEADER */}
+        <div style={{ marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-brand-primary)] to-[#20b2aa]">{user?.name?.split(' ')[0] || 'Student'}</span> 👋
+          </h1>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>
+            Here's your career overview.
+          </p>
         </div>
 
-        {/* BOTTOM ROW: INTERVIEW & RECENT */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
+        {/* KPI CARDS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' }}>
+          <StatCard label="Career Readiness" value={`${readinessData?.profile?.percentage || 0}%`} color="var(--color-brand-primary)" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>} />
+          <StatCard label="Total Applications" value={stats.total} color="var(--color-text-primary)" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>} />
+          <StatCard label="Upcoming Interviews" value={upcomingInterviews.length} color="#10b981" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>} />
+          <StatCard label="Offers" value={stats.offers} color="#f59e0b" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>} />
+        </div>
+
+        {/* TWO COLUMN LAYOUT FOR MAIN CONTENT */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '32px' }}>
           
-          {/* Upcoming Interview */}
-          <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '18px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Next Interview</h3>
-              <button onClick={() => navigate('/interviews')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>View Calendar ↗</button>
+          {/* RECOMMENDED ACTION */}
+          <div style={{ 
+            background: 'linear-gradient(135deg, var(--color-surface) 0%, rgba(32, 178, 170, 0.05) 100%)', 
+            padding: '24px', 
+            borderRadius: '16px', 
+            border: '1px solid var(--color-border)',
+            borderLeft: '4px solid var(--color-brand-primary)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '24px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ flex: '1 1 min-content' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🎯</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-brand-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recommended Next Action</span>
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '4px' }}>{action.title}</h3>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem' }}>{action.desc}</p>
             </div>
-            
-            {nextInterview ? (
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                <div style={{ background: 'var(--color-surface-overlay)', borderRadius: '14px', padding: '1.25rem 1rem', textAlign: 'center', minWidth: '90px' }}>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-brand-primary)', fontWeight: 800, textTransform: 'uppercase' }}>{new Date(nextInterview.scheduledAt).toLocaleString('default', { month: 'short' })}</div>
-                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1, margin: '0.2rem 0' }}>{new Date(nextInterview.scheduledAt).getDate()}</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '0.25rem' }}>{nextInterview.application?.company || 'Unknown Company'}</h4>
-                  <div style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '0.5rem' }}>{nextInterview.application?.role || nextInterview.type || 'Interview'}</div>
-                  <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: '0.75rem' }}>🕒 {new Date(nextInterview.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                  
-                  {nextInterview.preparation && nextInterview.preparation.checklist && nextInterview.preparation.checklist.length > 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                      <span style={{ color: 'var(--color-brand-primary)' }}>✨</span>
-                      Prep: {nextInterview.preparation.checklist.filter(c => c.completed).length} / {nextInterview.preparation.checklist.length} Tasks Complete
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                      <span style={{ color: '#f59e0b' }}>⚠️</span>
-                      Prep Workspace Empty
-                    </div>
-                  )}
-                  
-                  <button onClick={() => navigate('/interviews')} style={{ marginTop: '0.75rem', padding: '0.5rem 1rem', background: 'var(--color-surface-overlay)', border: '1px solid var(--color-brand-primary)', color: 'var(--color-brand-primary)', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start' }}>
-                    Open Prep Workspace
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}>📅</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--color-text-secondary)' }}>No upcoming interviews scheduled</div>
-                <p style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>Keep applying and updating your board when you land an interview.</p>
-                <button onClick={() => navigate('/applications')} className="btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>View Pipeline</button>
-              </div>
-            )}
+            <button onClick={() => navigate(action.link)} className="btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+              {action.cta}
+            </button>
           </div>
 
-          {/* Recent Applications */}
-          <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '18px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Recent Applications</h3>
-              <button onClick={() => navigate('/applications')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>View All ↗</button>
+          {/* TASKS (TODAY'S CAREER FOCUS) */}
+          <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>⚡</span>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Today's Career Focus</h3>
+              </div>
+              <button onClick={() => navigate('/tasks')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                View Tasks <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </button>
             </div>
             
-            {recentApplications.length === 0 ? (
-              <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}>📋</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--color-text-secondary)' }}>No recent applications found</div>
-                <p style={{ fontSize: '0.85rem' }}>Your most recently updated applications will appear here.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {recentApplications.map(app => (
-                  <div key={app._id} onClick={() => navigate('/applications')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--color-surface-overlay)', borderRadius: '12px', cursor: 'pointer', transition: 'var(--transition)' }} onMouseEnter={e => e.currentTarget.style.background='var(--color-surface-raised)'} onMouseLeave={e => e.currentTarget.style.background='var(--color-surface-overlay)'}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem' }}>
-                        {app.company.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text-primary)' }}>{app.company}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{app.role}</div>
-                      </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[...overdueItems, ...nextActions].slice(0, 4).map((item, index) => {
+                const isOverdue = overdueItems.some(o => o.id === item.id);
+                const color = isOverdue ? '#ef4444' : (item.date ? '#f59e0b' : '#10b981');
+                
+                return (
+                  <div key={`${item.id}-${index}`} onClick={() => navigate(item.link)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--color-surface-overlay)', borderRadius: '12px', cursor: 'pointer', border: '1px solid var(--color-border)', transition: 'border-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-brand-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: color, border: `3px solid ${color}33` }} />
+                      <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.title}</span>
                     </div>
-                    <span style={{ padding: '0.35rem 0.75rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700, background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
-                      {app.status}
+                    <span style={{ fontSize: '0.85rem', color: isOverdue ? '#ef4444' : 'var(--color-text-muted)', fontWeight: 600 }}>
+                      {isOverdue ? 'Overdue' : (item.date ? `Due ${new Date(item.date).toLocaleDateString()}` : 'No deadline')}
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+              {[...overdueItems, ...nextActions].length === 0 && (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
+                  No immediate tasks. You're all caught up!
+                </div>
+              )}
+            </div>
           </div>
 
-        </div>
-
-        {/* OPPORTUNITIES ROW */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '32px' }}>
-          <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '18px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Upcoming Opportunities</h3>
-              <button onClick={() => navigate('/opportunities')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>View Hub ↗</button>
-            </div>
+          {/* GRID ROW: OPPORTUNITIES & INTERVIEWS/COPILOT */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
             
-            {opportunities && opportunities.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                {opportunities.slice(0, 3).map(opp => (
-                  <div key={opp._id} onClick={() => navigate('/opportunities')} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'var(--color-surface-overlay)', borderRadius: '12px', cursor: 'pointer', border: '1px solid var(--color-border)', transition: 'border-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-brand-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-brand-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{opp.type}</div>
-                    <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-primary)' }}>{opp.title}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{opp.company}</div>
-                    {opp.deadline && (
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 'auto' }}>
-                        ⏳ Due {new Date(opp.deadline).toLocaleDateString()}
+            {/* RECOMMENDED OPPORTUNITIES */}
+            <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.2rem' }}>🎯</span>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Recommended Opportunities</h3>
+                </div>
+                <button onClick={() => navigate('/opportunities')} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  View All <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+
+              {opportunities && opportunities.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {opportunities.slice(0, 3).map(opp => (
+                    <div key={opp._id} onClick={() => navigate('/opportunities')} style={{ padding: '16px', background: 'var(--color-surface-overlay)', borderRadius: '12px', cursor: 'pointer', border: '1px solid var(--color-border)', transition: 'border-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.borderColor='var(--color-brand-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--color-border)'}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-primary)' }}>{opp.title}</div>
+                          <div style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>{opp.company}</div>
+                        </div>
+                        {opp.match && opp.match.score > 0 && (
+                          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-success)', background: 'var(--color-success)15', padding: '4px 8px', borderRadius: '6px' }}>
+                            {opp.match.score}% Match
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {opp.skills && opp.skills.slice(0, 3).map((skill, i) => (
+                          <span key={i} style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '4px', color: 'var(--color-text-secondary)' }}>
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
+                  No new recommendations right now.
+                </div>
+              )}
+            </div>
+
+            {/* INTERVIEWS & DRIVES STACK */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              
+              {/* UPCOMING INTERVIEW */}
+              <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🎤</span>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Upcoming Interview</h3>
+                  </div>
+                </div>
+                
+                {nextInterview ? (
+                  <div>
+                    <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                      <div style={{ background: 'var(--color-surface-overlay)', borderRadius: '12px', padding: '12px', textAlign: 'center', minWidth: '70px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-brand-primary)', fontWeight: 800, textTransform: 'uppercase' }}>{new Date(nextInterview.scheduledAt).toLocaleString('default', { month: 'short' })}</div>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1, margin: '4px 0' }}>{new Date(nextInterview.scheduledAt).getDate()}</div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{nextInterview.application?.role || nextInterview.type || 'Interview'}</h4>
+                        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', fontWeight: 500 }}>{nextInterview.application?.company || 'Unknown Company'}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                          {new Date(nextInterview.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                    <div style={{ padding: '12px 0' }}>No upcoming interviews</div>
+                  </div>
+                )}
+              </div>
+
+              {/* AVAILABLE PLACEMENT DRIVES */}
+              <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--color-border)', borderTop: '4px solid #10b981', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '200px', height: '200px', background: '#10b981', opacity: 0.05, borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none' }}></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', position: 'relative', zIndex: 1 }}>
+                  <span style={{ fontSize: '1.2rem' }}>🏢</span>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981' }}>Active Placement Drives</h3>
+                </div>
+                {activeDrives.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', zIndex: 1 }}>
+                    {activeDrives.slice(0, 2).map(drive => (
+                      <div key={drive._id} onClick={() => navigate('/placement-updates')} style={{ padding: '12px 16px', background: 'var(--color-surface-overlay)', borderRadius: '12px', cursor: 'pointer', border: '1px solid var(--color-border)' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{drive.company}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{drive.title}</div>
+                      </div>
+                    ))}
+                    {activeDrives.length > 2 && (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: '4px' }}>
+                        +{activeDrives.length - 2} more drives
                       </div>
                     )}
                   </div>
-                ))}
+                ) : (
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '16px', position: 'relative', zIndex: 1 }}>
+                    There are no active placement drives right now. Check back later!
+                  </p>
+                )}
+                <button onClick={() => navigate('/placement-updates')} style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'none', padding: '0.6rem 1rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 1, marginTop: '16px' }}>
+                  View Placement Drives <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
               </div>
-            ) : (
-              <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}>🌟</div>
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--color-text-secondary)' }}>No new opportunities found</div>
-                <p style={{ fontSize: '0.85rem' }}>Check back later for new placement drives and job postings.</p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

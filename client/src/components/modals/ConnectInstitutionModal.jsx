@@ -84,16 +84,14 @@ const ConnectInstitutionModal = ({ isOpen, onClose }) => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/auth/connect-institution', {
+      await api.post('/auth/connect-institution', {
         institutionId: form.institutionId,
         placementOfficerId: form.placementOfficerId,
         mentorId: form.mentorId
       });
       
       updateUser({
-        institutionId: data.user.institutionId,
-        placementOfficerId: data.user.placementOfficerId,
-        mentorId: data.user.mentorId
+        connectionStatus: 'PENDING'
       });
       
       setSuccess(true);
@@ -102,6 +100,7 @@ const ConnectInstitutionModal = ({ isOpen, onClose }) => {
         setSuccess(false);
         setStep(1);
         setForm({ institutionCode: '', institutionId: '', placementOfficerId: '', mentorId: '' });
+        window.location.reload();
       }, 2000);
       
     } catch (err) {
@@ -170,8 +169,8 @@ const ConnectInstitutionModal = ({ isOpen, onClose }) => {
           {success ? (
             <div style={{ textAlign: 'center', padding: '2rem 0' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-success)', marginBottom: '0.5rem' }}>Successfully Connected!</h3>
-              <p style={{ color: 'var(--color-text-secondary)' }}>You are now linked to {institutionName}. Redirecting...</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-brand-primary)', marginBottom: '0.5rem' }}>Connection Request Sent!</h3>
+              <p style={{ color: 'var(--color-text-secondary)' }}>Your request is pending mentor approval.</p>
             </div>
           ) : (
             <>

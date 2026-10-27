@@ -2,11 +2,14 @@ import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import useApplications from '../hooks/useApplications'
+import usePlacementDrives from '../hooks/usePlacementDrives'
 import { useAllInterviews } from '../hooks/useInterviews'
 import KanbanBoard, { STATUSES } from '../components/kanban/KanbanBoard'
 import ApplicationModal from '../components/modals/ApplicationModal'
 import Toast from '../components/ui/Toast'
 import api from '../api/axios'
+
+import StudentOffersView from '../components/applications/StudentOffersView'
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, color, icon }) => (
@@ -64,6 +67,7 @@ const Applications = () => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { applications, loading, error, createApplication, updateApplication, deleteApplication, fetchApplications } = useApplications()
+  const { drives: placementDrives, registerForDrive } = usePlacementDrives('STUDENT')
   const { interviews: allInterviews } = useAllInterviews()
 
   const upcomingInterviews = useMemo(() => {
@@ -83,14 +87,28 @@ const Applications = () => {
   const [defaultStatus, setDefaultStatus] = useState('Applied')
   const [nudgeLoading, setNudgeLoading] = useState(false)
   const [toasts, setToasts] = useState([])
-
-  // Phase 5/9 — Active view tab
-  const [activeView, setActiveView] = useState('command-center') // 'command-center' | 'board' | 'analytics'
-
+  
   const addToast = useCallback((title, message, type = 'info', duration = 4500) => {
     const id = Date.now().toString()
     setToasts(prev => [...prev, { id, title, message, type, duration }])
   }, [])
+  
+  const handleRegisterDrive = useCallback(async (driveId, targetStatus = 'Applied') => {
+    const res = await registerForDrive(driveId);
+    if (res && res.success) {
+      if (targetStatus !== 'Applied' && res.data && res.data._id) {
+         try {
+           await updateApplication(res.data._id, { status: targetStatus });
+         } catch (err) {
+           console.error('Failed to update status after register:', err);
+         }
+      }
+      addToast('Success', 'Registered for placement drive', 'success');
+      fetchApplications();
+    } else {
+      addToast('Error', res?.message || 'Failed to register', 'error');
+    }
+  }, [registerForDrive, updateApplication, fetchApplications, addToast]);
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id))
   }, [])
@@ -240,35 +258,31 @@ const Applications = () => {
   const handleLogout = () => { logout(); navigate('/') }
 
   return (
-    <div style={{
+    <div className="page-container" style={{
       minHeight: '100vh',
       backgroundColor: 'var(--color-bg)',
-      paddingTop: '96px', // below fixed navbar
+      padding: '36px',
       display: 'flex',
       flexDirection: 'column',
     }}>
+      <div style={{ maxWidth: '1440px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', height: '100%' }}>
 
       {/* ── Top Header ─────────────────────────────────────────────────────── */}
       <div style={{
-        padding: '32px 32px 24px 32px',
-        borderBottom: '1px solid var(--color-border)',
-        background: 'var(--color-bg)',
+        marginBottom: '24px',
         flexShrink: 0,
       }}>
         {/* Row 1: title + actions */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
           <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-brand-primary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-              My Pipeline
-            </div>
             <h1 style={{
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              fontSize: '2rem', fontWeight: 800,
-              letterSpacing: '-0.02em', color: 'var(--color-text-primary)',
-              lineHeight: 1,
+              fontSize: '2.5rem', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.03em', lineHeight: 1.1,
             }}>
               Applications
             </h1>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>
+              Track and manage your application pipeline.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -377,27 +391,29 @@ const Applications = () => {
 
       {/* ── Main Content: Kanban Board ─────────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', paddingTop: '1rem', width: '100%' }}>
-        {loading ? (
-          /* Loading skeleton */
-          <div style={{ display: 'flex', gap: '0.85rem', padding: '0 1.5rem 1.5rem', overflowX: 'auto' }}>
-            {STATUSES.map(s => (
-              <div key={s.id} style={{ flexShrink: 0, width: '272px' }}>
-                <div style={{ height: '46px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', borderTop: `3px solid ${s.color}`, marginBottom: '0.6rem' }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-                  {[1, 2].map(i => <SkeletonCard key={i} />)}
-                </div>
+            {loading ? (
+              /* Loading skeleton */
+              <div style={{ display: 'flex', gap: '0.85rem', padding: '0 1.5rem 1.5rem', overflowX: 'auto' }}>
+                {STATUSES.map(s => (
+                  <div key={s.id} style={{ flexShrink: 0, width: '272px' }}>
+                    <div style={{ height: '46px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', borderTop: `3px solid ${s.color}`, marginBottom: '0.6rem' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                      {[1, 2].map(i => <SkeletonCard key={i} />)}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <KanbanBoard
-            applications={filtered}
-            onUpdateApplication={updateApplication}
-            onEdit={openEditModal}
-            onDelete={deleteApplication}
-            onAddCard={openAddModal}
-          />
-        )}
+            ) : (
+              <KanbanBoard
+                applications={filtered}
+                placementDrives={placementDrives}
+                onRegisterDrive={handleRegisterDrive}
+                onUpdateApplication={updateApplication}
+                onEdit={openEditModal}
+                onDelete={deleteApplication}
+                onAddCard={openAddModal}
+              />
+            )}
       </div>
 
       {/* ── Upcoming Interviews Panel ─────────────────────────────────── */}
@@ -439,6 +455,19 @@ const Applications = () => {
                         <div style={{ fontSize: '0.78rem', fontWeight: 600, color: isToday ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)', textAlign: 'right' }}>
                           {isToday ? '🔴 Today ' : ''}{d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} at {d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                         </div>
+                        <button
+                          onClick={() => navigate(`/interview-prep/${iv._id}`)}
+                          style={{
+                            padding: '0.3rem 0.7rem',
+                            background: 'transparent',
+                            border: '1px solid var(--color-brand-primary)',
+                            color: 'var(--color-brand-primary)', 
+                            borderRadius: '6px',
+                            fontSize: '0.75rem', fontWeight: 700,
+                            cursor: 'pointer'
+                          }}>
+                          Prepare 🎤
+                        </button>
                         {iv.meetingUrl && (
                           <a href={iv.meetingUrl} target="_blank" rel="noopener noreferrer" style={{
                             padding: '0.3rem 0.7rem',
@@ -494,6 +523,7 @@ const Applications = () => {
       
       {/* ── Toast Notifications ────────────────────────────────────────────── */}
       <Toast toasts={toasts} onDismiss={removeToast} />
+      </div>
     </div>
   )
 }

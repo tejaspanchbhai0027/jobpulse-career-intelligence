@@ -29,12 +29,12 @@ router.get('/:id/statistics', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN', 'P
 router.get('/:id', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN', 'PLACEMENT_OFFICER', 'MENTOR', 'STUDENT'), getDriveById);
 
 // ── Admin & PO Write Routes ──────────────────────────────────────────────────
-// Only Admin can create a new drive
-router.post('/', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN'), createDrive);
+// Admin and PO can create a new drive
+router.post('/', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN', 'PLACEMENT_OFFICER'), createDrive);
 
 // Admin and the Assigned PO can update drive details & status
 router.patch('/:id', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN', 'PLACEMENT_OFFICER'), updateDrive);
 router.patch('/:id/status', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN', 'PLACEMENT_OFFICER'), updateDriveStatus);
-router.delete('/:id', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN'), deleteDrive);
+router.delete('/:id', requireRole('INSTITUTION_ADMIN', 'SUPER_ADMIN', 'PLACEMENT_OFFICER'), deleteDrive);
 
 module.exports = router;

@@ -60,4 +60,7 @@ router.get('/institutions/:institutionId/placement-officers', getPlacementOffice
 // @route  GET /api/auth/placement-officers/:officerId/mentors
 router.get('/placement-officers/:officerId/mentors', getMentors);
 
+// @route  GET /api/auth/connection-status
+router.get('/connection-status', protect, require('../controllers/authController').getStudentConnectionStatus);
+
 module.exports = router;

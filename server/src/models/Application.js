@@ -110,7 +110,7 @@ const applicationSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['LinkedIn', 'Referral', 'Company Website', 'Naukri', 'Indeed', 'Other', ''],
+      enum: ['LinkedIn', 'Referral', 'Company Website', 'Naukri', 'Indeed', 'Institution', 'Other', ''],
       default: '',
     },
     location: {

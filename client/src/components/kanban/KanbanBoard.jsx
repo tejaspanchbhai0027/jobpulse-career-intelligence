@@ -11,7 +11,7 @@ export const STATUSES = [
   { id: 'Rejected',   label: 'Rejected',   color: 'var(--color-rejected)', icon: '💔' },
 ]
 
-const KanbanBoard = ({ applications, onUpdateApplication, onEdit, onDelete, onAddCard }) => {
+const KanbanBoard = ({ applications, onUpdateApplication, onEdit, onDelete, onAddCard, placementDrives = [], onRegisterDrive }) => {
   const [activeMobileStage, setActiveMobileStage] = useState('Applied')
 
   return (
@@ -41,6 +41,8 @@ const KanbanBoard = ({ applications, onUpdateApplication, onEdit, onDelete, onAd
               onDelete={onDelete}
               onAddCard={onAddCard}
               onUpdateApplication={onUpdateApplication}
+              placementDrives={status.id === 'Wishlist' ? placementDrives.filter(d => !d.isRegistered) : []}
+              onRegisterDrive={onRegisterDrive}
             />
           </div>
         ))}

@@ -51,17 +51,17 @@ const Tasks = () => {
   };
 
   return (
-    <div className="page-container" style={{ minHeight: '100vh', background: 'var(--color-bg)', padding: '32px', paddingTop: 'max(96px, env(safe-area-inset-top, 0px))', paddingBottom: '100px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+    <div className="page-container" style={{ minHeight: '100vh', background: 'var(--color-bg)', padding: '36px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ maxWidth: '1440px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', height: '100%', gap: '32px' }}>
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Task Center</h1>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginTop: '0.25rem', margin: 0 }}>
+            <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0 }}>Task Center</h1>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500, margin: 0 }}>
               Manage your career follow-ups, assessments, and preparation.
             </p>
           </div>
-          <button onClick={() => handleOpenModal()} className="btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', fontSize: '0.95rem' }}>
+          <button onClick={() => handleOpenModal()} className="btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 700 }}>
             ➕ New Task
           </button>
         </div>
@@ -92,7 +92,7 @@ const Tasks = () => {
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>No tasks found</h3>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>{filter === 'Pending' ? "You're all caught up! No pending tasks." : "No tasks match this view."}</p>
-            {filter === 'Pending' && <button onClick={() => handleOpenModal()} className="btn-secondary" style={{ padding: '0.5rem 1.5rem' }}>Create Task</button>}
+            {filter === 'Pending' && <button onClick={() => handleOpenModal()} className="btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', fontWeight: 700 }}>Create Task</button>}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>

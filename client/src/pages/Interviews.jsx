@@ -22,7 +22,7 @@ const Interviews = () => {
   };
 
   return (
-    <div className="page-container" style={{ minHeight: '100vh', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', paddingTop: '96px', paddingBottom: '32px' }}>
+    <div className="page-container" style={{ height: '100%', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', paddingBottom: '32px' }}>
       <div style={{ padding: '0 32px', maxWidth: '1200px', margin: '0 auto', width: '100%', flex: 1 }}>
       
       {/* ── Header ───────────────────────────────────────────────────────────── */}

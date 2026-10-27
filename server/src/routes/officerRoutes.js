@@ -9,8 +9,13 @@ const {
   getApplications,
   getInterventions,
   getAnalytics,
-  queryCopilot
+  queryCopilot,
+  createNotice,
+  getNotices,
+  updateNotice,
+  deleteNotice
 } = require('../controllers/officerController');
+const { getVerificationAlerts } = require('../controllers/placementVerificationController');
 const { getStudents, getStudentById, assignMentor } = require('../controllers/adminStudentController');
 const { protect, requireRole, requireInstitutionAccess } = require('../middleware/authMiddleware');
 
@@ -54,7 +59,22 @@ router.get('/interventions', getInterventions);
 // ── @route   GET /api/officer/analytics
 router.get('/analytics', getAnalytics);
 
+// ── @route   GET /api/officer/placement-verification
+router.get('/placement-verification', getVerificationAlerts);
+
 // ── @route   POST /api/officer/intelligence/copilot
 router.post('/intelligence/copilot', queryCopilot);
+
+// ── @route   GET /api/officer/notices
+router.get('/notices', getNotices);
+
+// ── @route   POST /api/officer/notices
+router.post('/notices', createNotice);
+
+// ── @route   PUT /api/officer/notices/:id
+router.put('/notices/:id', updateNotice);
+
+// ── @route   DELETE /api/officer/notices/:id
+router.delete('/notices/:id', deleteNotice);
 
 module.exports = router;
